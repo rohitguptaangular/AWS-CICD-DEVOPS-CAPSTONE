@@ -1,0 +1,8 @@
+# Keep the build context small and the image clean.
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.git/
+.DS_Store
