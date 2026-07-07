@@ -4,6 +4,10 @@
 
 This document describes the full architecture of the CI/CD pipeline and the AWS infrastructure it manages.
 
+![CI/CD Pipeline Architecture](architecture-diagram.svg)
+
+*Solid = delivered in Sprint 1 (GitHub → Jenkins → Docker → ECR). Dashed = upcoming sprints (Terraform, EKS, Prometheus/Grafana).*
+
 ---
 
 ## High-Level Data Flow
