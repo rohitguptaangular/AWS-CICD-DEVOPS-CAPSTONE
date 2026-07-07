@@ -1,5 +1,6 @@
 from flask import Flask
 
+# Webhook test: this push should auto-trigger a Jenkins build (Sprint 1, task 1.7).
 app = Flask(__name__)
 
 
