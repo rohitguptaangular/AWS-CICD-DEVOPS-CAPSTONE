@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="660" viewBox="0 0 1080 660" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1080" height="660" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="540" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2937">Herovire DevOps Capstone — CI/CD Pipeline Architecture</text>
+  <text x="540" y="66" text-anchor="middle" font-size="14" fill="#6b7280">Sprint 1 (solid) delivers GitHub → Jenkins → Docker → ECR · later sprints (dashed) add EKS &amp; monitoring</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#374151"/>
+    </marker>
+    <marker id="arrowGrey" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9ca3af"/>
+    </marker>
+  </defs>
+
+  <!-- GitHub -->
+  <rect x="40" y="120" width="160" height="80" rx="10" fill="#24292e"/>
+  <text x="120" y="152" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">GitHub</text>
+  <text x="120" y="172" text-anchor="middle" font-size="12" fill="#c9d1d9">private repo</text>
+  <text x="120" y="188" text-anchor="middle" font-size="12" fill="#c9d1d9">+ webhook</text>
+
+  <!-- Developer -->
+  <rect x="40" y="300" width="160" height="80" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+  <text x="120" y="332" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Developer</text>
+  <text x="120" y="352" text-anchor="middle" font-size="12" fill="#4b5563">local: code +</text>
+  <text x="120" y="368" text-anchor="middle" font-size="12" fill="#4b5563">Docker build</text>
+
+  <!-- (1) git push -->
+  <line x1="120" y1="300" x2="120" y2="205" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="132" y="255" font-size="12" font-weight="600" fill="#374151">① git push</text>
+
+  <!-- AWS Cloud container -->
+  <rect x="250" y="90" width="800" height="470" rx="14" fill="none" stroke="#ff9900" stroke-width="2" stroke-dasharray="8 5"/>
+  <text x="270" y="116" font-size="15" font-weight="700" fill="#d97706">☁  AWS Cloud — ap-south-1 (Mumbai)</text>
+
+  <!-- Jenkins EC2 container -->
+  <rect x="288" y="150" width="272" height="330" rx="12" fill="#f8fafc" stroke="#2563eb" stroke-width="2"/>
+  <text x="424" y="178" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">EC2 t3.medium — Jenkins</text>
+  <text x="424" y="197" text-anchor="middle" font-size="11" fill="#6b7280">Security Group: SSH 22 · UI 8080</text>
+  <text x="424" y="212" text-anchor="middle" font-size="11" fill="#6b7280">IAM role → ECR push (no keys)</text>
+  <text x="424" y="236" text-anchor="middle" font-size="12" font-style="italic" fill="#374151">Pipeline: herovire-app-pipeline</text>
+
+  <!-- Pipeline stages -->
+  <rect x="312" y="252" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="424" y="280" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">① docker build  (app/)</text>
+
+  <rect x="312" y="308" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="424" y="336" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">② ECR login  (via IAM role)</text>
+
+  <rect x="312" y="364" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="424" y="392" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">③ docker tag &amp; push</text>
+
+  <!-- (2) webhook -->
+  <line x1="200" y1="160" x2="288" y2="230" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="206" y="150" font-size="12" font-weight="600" fill="#374151">② webhook POST</text>
+  <text x="206" y="165" font-size="10" fill="#6b7280">/github-webhook/</text>
+
+  <!-- Amazon ECR -->
+  <rect x="650" y="210" width="210" height="96" rx="10" fill="#fff7ed" stroke="#ff9900" stroke-width="2"/>
+  <text x="755" y="240" text-anchor="middle" font-size="15" font-weight="700" fill="#c2410c">Amazon ECR</text>
+  <text x="755" y="262" text-anchor="middle" font-size="12" fill="#7c2d12">repo: herovire-app</text>
+  <text x="755" y="280" text-anchor="middle" font-size="12" fill="#7c2d12">tags: 1 · 2 · latest</text>
+  <text x="755" y="297" text-anchor="middle" font-size="10" fill="#9a3412">scan-on-push · lifecycle policy</text>
+
+  <!-- (3) docker push -->
+  <line x1="536" y1="387" x2="700" y2="308" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="560" y="360" font-size="12" font-weight="600" fill="#374151">③ docker push</text>
+
+  <!-- Amazon EKS (future) -->
+  <rect x="650" y="380" width="210" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
+  <text x="755" y="412" text-anchor="middle" font-size="15" font-weight="700" fill="#6b7280">Amazon EKS</text>
+  <text x="755" y="434" text-anchor="middle" font-size="12" fill="#9ca3af">Kubernetes cluster</text>
+  <text x="755" y="452" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 4)</text>
+
+  <!-- Monitoring (future) -->
+  <rect x="890" y="380" width="140" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
+  <text x="960" y="415" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">Prometheus</text>
+  <text x="960" y="434" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">+ Grafana</text>
+  <text x="960" y="452" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 5)</text>
+
+  <!-- (4) pull image (future) -->
+  <line x1="755" y1="306" x2="755" y2="380" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowGrey)"/>
+  <text x="765" y="348" font-size="11" fill="#9ca3af">④ pull image</text>
+
+  <!-- (5) kubectl apply (future) -->
+  <line x1="560" y1="430" x2="650" y2="428" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowGrey)"/>
+  <text x="556" y="452" font-size="11" fill="#9ca3af">⑤ kubectl apply</text>
+
+  <!-- Terraform note (future) -->
+  <rect x="890" y="210" width="140" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
+  <text x="960" y="242" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">Terraform</text>
+  <text x="960" y="263" text-anchor="middle" font-size="11" fill="#9ca3af">infra as code</text>
+  <text x="960" y="279" text-anchor="middle" font-size="11" fill="#9ca3af">S3 state backend</text>
+  <text x="960" y="296" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 2)</text>
+
+  <!-- Legend -->
+  <line x1="300" y1="600" x2="340" y2="600" stroke="#374151" stroke-width="3"/>
+  <text x="348" y="605" font-size="13" fill="#374151">Built in Sprint 1</text>
+  <line x1="500" y1="600" x2="540" y2="600" stroke="#9ca3af" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="548" y="605" font-size="13" fill="#6b7280">Upcoming (Sprints 2–6)</text>
+</svg>
