@@ -1,7 +1,7 @@
 # End-to-End DevOps Pipeline for a Web Application with CI/CD
 
 **Assigned by:** Herovire  
-**Evaluation:** Documentation 15% | Implementation 75% | Cost Optimization 10%
+
 
 ---
 
