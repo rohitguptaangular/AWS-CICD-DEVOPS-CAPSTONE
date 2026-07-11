@@ -36,9 +36,9 @@ variable "jenkins_instance_type" {
 }
 
 variable "eks_version" {
-  description = "Kubernetes version for EKS. Verify it's currently supported before apply."
+  description = "Kubernetes version for EKS. Verify it's in STANDARD_SUPPORT before apply (extended support costs ~6x more)."
   type        = string
-  default     = "1.31"
+  default     = "1.33"
 }
 
 variable "node_instance_type" {
