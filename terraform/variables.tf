@@ -34,3 +34,21 @@ variable "jenkins_instance_type" {
   type        = string
   default     = "t3.medium"
 }
+
+variable "eks_version" {
+  description = "Kubernetes version for EKS. Verify it's currently supported before apply."
+  type        = string
+  default     = "1.31"
+}
+
+variable "node_instance_type" {
+  description = "EC2 instance type for EKS worker nodes"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "node_desired_size" {
+  description = "Desired number of EKS worker nodes (lower = cheaper)"
+  type        = number
+  default     = 2
+}

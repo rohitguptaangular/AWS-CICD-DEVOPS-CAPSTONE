@@ -28,3 +28,13 @@ output "jenkins_url" {
   description = "Jenkins UI URL"
   value       = "http://${aws_eip.jenkins.public_ip}:8080"
 }
+
+output "eks_cluster_name" {
+  description = "Name of the EKS cluster"
+  value       = aws_eks_cluster.main.name
+}
+
+output "eks_cluster_endpoint" {
+  description = "EKS API server endpoint"
+  value       = aws_eks_cluster.main.endpoint
+}
