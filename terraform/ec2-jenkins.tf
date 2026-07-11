@@ -1,0 +1,73 @@
+# =====================================================================
+# Jenkins EC2 — the CI server, now as code.
+# AMI lookup + IAM role/profile + instance + Elastic IP.
+# =====================================================================
+
+# ---- Latest Amazon Linux 2023 AMI (no hardcoded AMI id) ----
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.*-x86_64"]
+  }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# ---- IAM role the instance assumes ----
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "jenkins" {
+  name               = "${var.project_name}-jenkins-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+  tags               = { Name = "${var.project_name}-jenkins-role" }
+}
+
+# ECR push/pull permissions (least privilege — add EKS/S3 later if needed)
+resource "aws_iam_role_policy_attachment" "jenkins_ecr" {
+  role       = aws_iam_role.jenkins.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+# Instance profile = the wrapper that lets the EC2 use the role
+resource "aws_iam_instance_profile" "jenkins" {
+  name = "${var.project_name}-jenkins-profile"
+  role = aws_iam_role.jenkins.name
+}
+
+# ---- The Jenkins instance ----
+resource "aws_instance" "jenkins" {
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = var.jenkins_instance_type
+  subnet_id              = aws_subnet.public[0].id
+  vpc_security_group_ids = [aws_security_group.jenkins.id]
+  iam_instance_profile   = aws_iam_instance_profile.jenkins.name
+  key_name               = var.key_name
+
+  user_data = file("${path.module}/scripts/jenkins-userdata.sh")
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  tags = { Name = "${var.project_name}-jenkins" }
+}
+
+# ---- Elastic IP: a STATIC public IP (fixes the dynamic-IP webhook problem) ----
+resource "aws_eip" "jenkins" {
+  instance = aws_instance.jenkins.id
+  domain   = "vpc"
+  tags     = { Name = "${var.project_name}-jenkins-eip" }
+}
