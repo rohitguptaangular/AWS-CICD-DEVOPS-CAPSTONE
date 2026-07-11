@@ -1,1 +1,4 @@
 .DS_Store
+
+# Local progress log — Claude's reference notes, not a repo deliverable
+docs/PROGRESS.md
