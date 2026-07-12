@@ -1,0 +1,55 @@
+# Deployment = "run and maintain N copies (pods) of my app".
+# Kubernetes keeps this many running, replaces crashed ones, and does
+# rolling updates when the image changes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: herovire-app
+  labels:
+    app: herovire-app
+spec:
+  replicas: 2 # run 2 pods for availability
+  selector:
+    matchLabels:
+      app: herovire-app # this Deployment manages pods with this label
+  template: # the "blueprint" for each pod
+    metadata:
+      labels:
+        app: herovire-app # pods get this label (matches the selector above)
+    spec:
+      containers:
+        - name: herovire-app
+          # The image the Jenkins pipeline pushes to ECR. :latest for now;
+          # Sprint 4 will parameterize this with the build number.
+          image: 859666866036.dkr.ecr.ap-south-1.amazonaws.com/herovire-app:latest
+          ports:
+            - containerPort: 5000 # the port gunicorn listens on
+
+          # Resource requests/limits — also REQUIRED for the HPA to work
+          # (it scales based on % of the requested CPU).
+          resources:
+            requests:
+              cpu: 100m # 0.1 vCPU reserved
+              memory: 128Mi
+            limits:
+              cpu: 250m # capped at 0.25 vCPU
+              memory: 256Mi
+
+          # Liveness probe = "is the app alive?" If this fails, K8s RESTARTS
+          # the pod. Uses the /health endpoint you built in Sprint 1.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          # Readiness probe = "is the app ready for traffic?" If this fails,
+          # K8s stops sending traffic (but does NOT restart). This is what
+          # makes rolling updates zero-downtime.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
