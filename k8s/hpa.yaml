@@ -1,0 +1,25 @@
+# HorizontalPodAutoscaler = automatically add/remove pods based on load.
+# Watches CPU usage across the Deployment's pods and scales the replica
+# count up (busy) or down (idle) to keep average CPU near the target.
+#
+# NOTE: needs the Kubernetes "metrics-server" running in the cluster to
+# read CPU usage (EKS doesn't install it by default — we'll add it when
+# we deploy).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: herovire-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: herovire-app # scale THIS deployment
+  minReplicas: 2 # never go below 2
+  maxReplicas: 10 # never go above 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50 # aim for ~50% CPU; scale up past that
