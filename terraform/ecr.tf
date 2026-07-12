@@ -7,6 +7,7 @@
 resource "aws_ecr_repository" "app" {
   name                 = "${var.project_name}-app" # herovire-app
   image_tag_mutability = "MUTABLE"                 # allow :latest to be overwritten
+  force_delete         = true                      # let `terraform destroy` remove it even with images inside
 
   # Scan images for vulnerabilities on every push (free, security best practice).
   image_scanning_configuration {
