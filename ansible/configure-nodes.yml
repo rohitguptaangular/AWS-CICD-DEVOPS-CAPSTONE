@@ -1,18 +1,13 @@
 ---
-# Sprint 3 — configure the EC2 node(s): install Docker, kubectl, and AWS CLI.
-# Uses a LOOP (install a list of packages) and a HANDLER (restart Docker only
-# when the user's group membership changes). Target OS: Amazon Linux 2023.
-
 - name: Configure CI/CD node (Docker, kubectl, AWS CLI)
   hosts: jenkins
-  become: true # install packages as root (sudo)
+  become: true
   gather_facts: true
 
   vars:
-    kubectl_version: "v1.33.0" # match the EKS cluster version
+    kubectl_version: "v1.33.0"
 
   tasks:
-    # ---- LOOP: install base packages in one task ----
     - name: Install base packages
       ansible.builtin.dnf:
         name: "{{ item }}"
@@ -21,14 +16,12 @@
         - docker
         - git
 
-    # ---- Ensure Docker runs now and on every boot (idempotent) ----
     - name: Ensure Docker is started and enabled
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
 
-    # ---- Add ec2-user to the docker group; notify a handler if it changes ----
     - name: Add ec2-user to the docker group
       ansible.builtin.user:
         name: ec2-user
@@ -36,19 +29,17 @@
         append: true
       notify: Restart Docker
 
-    # ---- Install kubectl (get_url is idempotent — skips if already present) ----
-    - name: Install kubectl binary
+    - name: Install kubectl
       ansible.builtin.get_url:
         url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
         dest: /usr/local/bin/kubectl
         mode: "0755"
 
-    # ---- AWS CLI: install only if not already present (a `when` condition) ----
     - name: Check if AWS CLI is installed
       ansible.builtin.command: aws --version
       register: aws_cli_check
-      changed_when: false # a check never "changes" anything
-      failed_when: false # don't fail if aws is missing — we handle it below
+      changed_when: false
+      failed_when: false
 
     - name: Download AWS CLI v2 installer
       ansible.builtin.get_url:
@@ -63,11 +54,10 @@
         unzip -o awscliv2.zip
         ./aws/install
       args:
-        creates: /usr/local/bin/aws # idempotency guard — skip if already installed
+        creates: /usr/local/bin/aws
       when: aws_cli_check.rc != 0
 
   handlers:
-    # Runs only when a task notified it (here: the docker group change).
     - name: Restart Docker
       ansible.builtin.service:
         name: docker

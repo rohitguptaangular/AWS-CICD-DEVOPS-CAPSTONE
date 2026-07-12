@@ -1,4 +1,3 @@
-# Pins the Terraform CLI and provider versions so builds are reproducible.
 terraform {
   required_version = ">= 1.5"
 

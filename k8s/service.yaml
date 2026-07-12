@@ -1,9 +1,3 @@
-# Service = a stable address + load balancer for the pods.
-# Pods come and go (and change IPs); the Service gives them ONE steady
-# endpoint and spreads traffic across them.
-#
-# type: LoadBalancer tells AWS to create a real cloud Load Balancer
-# with a public DNS name, so the app is reachable from the internet.
 apiVersion: v1
 kind: Service
 metadata:
@@ -11,8 +5,8 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: herovire-app # send traffic to pods with this label
+    app: herovire-app
   ports:
-    - port: 80 # the port the load balancer listens on (public)
-      targetPort: 5000 # the port on the pods (gunicorn)
+    - port: 80
+      targetPort: 5000
       protocol: TCP

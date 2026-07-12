@@ -1,9 +1,3 @@
-# =====================================================================
-# Jenkins EC2 — the CI server, now as code.
-# AMI lookup + IAM role/profile + instance + Elastic IP.
-# =====================================================================
-
-# ---- Latest Amazon Linux 2023 AMI (no hardcoded AMI id) ----
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -17,7 +11,6 @@ data "aws_ami" "al2023" {
   }
 }
 
-# ---- IAM role the instance assumes ----
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -34,19 +27,16 @@ resource "aws_iam_role" "jenkins" {
   tags               = { Name = "${var.project_name}-jenkins-role" }
 }
 
-# ECR push/pull permissions (least privilege — add EKS/S3 later if needed)
 resource "aws_iam_role_policy_attachment" "jenkins_ecr" {
   role       = aws_iam_role.jenkins.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
-# Instance profile = the wrapper that lets the EC2 use the role
 resource "aws_iam_instance_profile" "jenkins" {
   name = "${var.project_name}-jenkins-profile"
   role = aws_iam_role.jenkins.name
 }
 
-# ---- The Jenkins instance ----
 resource "aws_instance" "jenkins" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = var.jenkins_instance_type
@@ -65,7 +55,7 @@ resource "aws_instance" "jenkins" {
   tags = { Name = "${var.project_name}-jenkins" }
 }
 
-# ---- Elastic IP: a STATIC public IP (fixes the dynamic-IP webhook problem) ----
+# Static IP so the webhook URL survives stop/start.
 resource "aws_eip" "jenkins" {
   instance = aws_instance.jenkins.id
   domain   = "vpc"
