@@ -1,103 +1,152 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="660" viewBox="0 0 1080 660" font-family="Segoe UI, Helvetica, Arial, sans-serif">
-  <rect x="0" y="0" width="1080" height="660" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="820" viewBox="0 0 1240 820" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1240" height="820" fill="#ffffff"/>
 
   <!-- Title -->
-  <text x="540" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2937">Herovire DevOps Capstone — CI/CD Pipeline Architecture</text>
-  <text x="540" y="66" text-anchor="middle" font-size="14" fill="#6b7280">Sprint 1 (solid) delivers GitHub → Jenkins → Docker → ECR · later sprints (dashed) add EKS &amp; monitoring</text>
+  <text x="620" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2937">Herovire DevOps Capstone — End-to-End CI/CD Architecture on AWS</text>
+  <text x="620" y="66" text-anchor="middle" font-size="14" fill="#6b7280">GitHub → Jenkins → Docker → ECR → EKS &#183; provisioned with Terraform &#183; configured with Ansible &#183; monitored with Prometheus + Grafana</text>
 
   <!-- Arrow markers -->
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,3 L0,6 Z" fill="#374151"/>
     </marker>
-    <marker id="arrowGrey" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L8,3 L0,6 Z" fill="#9ca3af"/>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#cc0000"/>
     </marker>
   </defs>
 
   <!-- GitHub -->
-  <rect x="40" y="120" width="160" height="80" rx="10" fill="#24292e"/>
-  <text x="120" y="152" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">GitHub</text>
-  <text x="120" y="172" text-anchor="middle" font-size="12" fill="#c9d1d9">private repo</text>
-  <text x="120" y="188" text-anchor="middle" font-size="12" fill="#c9d1d9">+ webhook</text>
+  <rect x="40" y="150" width="160" height="80" rx="10" fill="#24292e"/>
+  <text x="120" y="182" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">GitHub</text>
+  <text x="120" y="202" text-anchor="middle" font-size="12" fill="#c9d1d9">private repo</text>
+  <text x="120" y="218" text-anchor="middle" font-size="12" fill="#c9d1d9">app &#183; IaC &#183; k8s &#183; Jenkinsfile</text>
 
   <!-- Developer -->
   <rect x="40" y="300" width="160" height="80" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
   <text x="120" y="332" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Developer</text>
-  <text x="120" y="352" text-anchor="middle" font-size="12" fill="#4b5563">local: code +</text>
-  <text x="120" y="368" text-anchor="middle" font-size="12" fill="#4b5563">Docker build</text>
+  <text x="120" y="352" text-anchor="middle" font-size="12" fill="#4b5563">code + commit</text>
+  <text x="120" y="368" text-anchor="middle" font-size="12" fill="#4b5563">local workstation</text>
+
+  <!-- End Users -->
+  <rect x="40" y="560" width="160" height="80" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+  <text x="120" y="592" text-anchor="middle" font-size="15" font-weight="700" fill="#047857">End Users</text>
+  <text x="120" y="612" text-anchor="middle" font-size="12" fill="#4b5563">browser / clients</text>
+  <text x="120" y="628" text-anchor="middle" font-size="12" fill="#4b5563">HTTP 80</text>
 
   <!-- (1) git push -->
-  <line x1="120" y1="300" x2="120" y2="205" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="132" y="255" font-size="12" font-weight="600" fill="#374151">① git push</text>
+  <line x1="120" y1="300" x2="120" y2="236" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="132" y="272" font-size="12" font-weight="600" fill="#374151">&#9312; git push</text>
 
   <!-- AWS Cloud container -->
-  <rect x="250" y="90" width="800" height="470" rx="14" fill="none" stroke="#ff9900" stroke-width="2" stroke-dasharray="8 5"/>
-  <text x="270" y="116" font-size="15" font-weight="700" fill="#d97706">☁  AWS Cloud — ap-south-1 (Mumbai)</text>
-
-  <!-- Jenkins EC2 container -->
-  <rect x="288" y="150" width="272" height="330" rx="12" fill="#f8fafc" stroke="#2563eb" stroke-width="2"/>
-  <text x="424" y="178" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">EC2 t3.medium — Jenkins</text>
-  <text x="424" y="197" text-anchor="middle" font-size="11" fill="#6b7280">Security Group: SSH 22 · UI 8080</text>
-  <text x="424" y="212" text-anchor="middle" font-size="11" fill="#6b7280">IAM role → ECR push (no keys)</text>
-  <text x="424" y="236" text-anchor="middle" font-size="12" font-style="italic" fill="#374151">Pipeline: herovire-app-pipeline</text>
-
-  <!-- Pipeline stages -->
-  <rect x="312" y="252" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="424" y="280" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">① docker build  (app/)</text>
-
-  <rect x="312" y="308" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="424" y="336" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">② ECR login  (via IAM role)</text>
-
-  <rect x="312" y="364" width="224" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="424" y="392" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">③ docker tag &amp; push</text>
+  <rect x="250" y="95" width="950" height="620" rx="14" fill="none" stroke="#ff9900" stroke-width="2" stroke-dasharray="8 5"/>
+  <text x="270" y="121" font-size="15" font-weight="700" fill="#d97706">&#9729;  AWS Cloud — ap-south-1 (Mumbai) &#183; VPC 10.0.0.0/16 &#183; 2 AZs</text>
 
   <!-- (2) webhook -->
-  <line x1="200" y1="160" x2="288" y2="230" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="206" y="150" font-size="12" font-weight="600" fill="#374151">② webhook POST</text>
-  <text x="206" y="165" font-size="10" fill="#6b7280">/github-webhook/</text>
+  <line x1="200" y1="190" x2="290" y2="205" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="208" y="166" font-size="12" font-weight="600" fill="#374151">&#9313; webhook</text>
+  <text x="208" y="181" font-size="12" font-weight="600" fill="#374151">trigger</text>
+
+  <!-- Jenkins EC2 -->
+  <rect x="290" y="170" width="260" height="310" rx="12" fill="#f8fafc" stroke="#2563eb" stroke-width="2"/>
+  <text x="420" y="198" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">Jenkins — EC2 t3.medium</text>
+  <text x="420" y="217" text-anchor="middle" font-size="11" fill="#6b7280">public subnet &#183; Elastic IP</text>
+  <text x="420" y="232" text-anchor="middle" font-size="11" fill="#6b7280">SG: 22/8080 restricted &#183; IAM role (no keys)</text>
+
+  <rect x="305" y="250" width="230" height="38" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="420" y="274" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">docker build (app/)</text>
+
+  <rect x="305" y="302" width="230" height="38" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="420" y="326" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">docker tag &amp; push &#8594; ECR</text>
+
+  <rect x="305" y="354" width="230" height="38" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="420" y="378" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">kubectl apply + set image</text>
+
+  <rect x="305" y="406" width="230" height="38" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="420" y="430" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">rollout status (undo on fail)</text>
 
   <!-- Amazon ECR -->
-  <rect x="650" y="210" width="210" height="96" rx="10" fill="#fff7ed" stroke="#ff9900" stroke-width="2"/>
-  <text x="755" y="240" text-anchor="middle" font-size="15" font-weight="700" fill="#c2410c">Amazon ECR</text>
-  <text x="755" y="262" text-anchor="middle" font-size="12" fill="#7c2d12">repo: herovire-app</text>
-  <text x="755" y="280" text-anchor="middle" font-size="12" fill="#7c2d12">tags: 1 · 2 · latest</text>
-  <text x="755" y="297" text-anchor="middle" font-size="10" fill="#9a3412">scan-on-push · lifecycle policy</text>
+  <rect x="640" y="150" width="250" height="95" rx="10" fill="#fff7ed" stroke="#ff9900" stroke-width="2"/>
+  <text x="765" y="180" text-anchor="middle" font-size="15" font-weight="700" fill="#c2410c">Amazon ECR</text>
+  <text x="765" y="202" text-anchor="middle" font-size="12" fill="#7c2d12">repo: herovire-app &#183; tags: build # + latest</text>
+  <text x="765" y="220" text-anchor="middle" font-size="11" fill="#9a3412">scan-on-push &#183; lifecycle policy</text>
 
-  <!-- (3) docker push -->
-  <line x1="536" y1="387" x2="700" y2="308" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="560" y="360" font-size="12" font-weight="600" fill="#374151">③ docker push</text>
+  <!-- (3) push image -->
+  <line x1="550" y1="320" x2="640" y2="240" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="552" y="342" font-size="12" font-weight="600" fill="#374151">&#9314; push image</text>
 
-  <!-- Amazon EKS (future) -->
-  <rect x="650" y="380" width="210" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
-  <text x="755" y="412" text-anchor="middle" font-size="15" font-weight="700" fill="#6b7280">Amazon EKS</text>
-  <text x="755" y="434" text-anchor="middle" font-size="12" fill="#9ca3af">Kubernetes cluster</text>
-  <text x="755" y="452" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 4)</text>
+  <!-- Amazon EKS cluster -->
+  <rect x="640" y="290" width="530" height="360" rx="12" fill="#fbfcff" stroke="#326ce5" stroke-width="2"/>
+  <text x="905" y="318" text-anchor="middle" font-size="15" font-weight="700" fill="#1e40af">Amazon EKS — herovire-eks</text>
 
-  <!-- Monitoring (future) -->
-  <rect x="890" y="380" width="140" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
-  <text x="960" y="415" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">Prometheus</text>
-  <text x="960" y="434" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">+ Grafana</text>
-  <text x="960" y="452" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 5)</text>
+  <rect x="660" y="335" width="490" height="32" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="905" y="356" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">Managed control plane — Kubernetes API server</text>
 
-  <!-- (4) pull image (future) -->
-  <line x1="755" y1="306" x2="755" y2="380" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowGrey)"/>
-  <text x="765" y="348" font-size="11" fill="#9ca3af">④ pull image</text>
+  <!-- Node group -->
+  <rect x="660" y="385" width="490" height="170" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+  <text x="905" y="408" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Managed node group — 2&#215; t3.medium &#183; private subnets &#183; 2 AZs</text>
 
-  <!-- (5) kubectl apply (future) -->
-  <line x1="560" y1="430" x2="650" y2="428" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowGrey)"/>
-  <text x="556" y="452" font-size="11" fill="#9ca3af">⑤ kubectl apply</text>
+  <rect x="680" y="422" width="145" height="52" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="752" y="444" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">Pod: herovire-app</text>
+  <text x="752" y="461" text-anchor="middle" font-size="11" fill="#3b82f6">gunicorn :5000</text>
 
-  <!-- Terraform note (future) -->
-  <rect x="890" y="210" width="140" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="7 4"/>
-  <text x="960" y="242" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7280">Terraform</text>
-  <text x="960" y="263" text-anchor="middle" font-size="11" fill="#9ca3af">infra as code</text>
-  <text x="960" y="279" text-anchor="middle" font-size="11" fill="#9ca3af">S3 state backend</text>
-  <text x="960" y="296" text-anchor="middle" font-size="11" fill="#9ca3af">(Sprint 2)</text>
+  <rect x="845" y="422" width="145" height="52" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="917" y="444" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">Pod: herovire-app</text>
+  <text x="917" y="461" text-anchor="middle" font-size="11" fill="#3b82f6">gunicorn :5000</text>
 
-  <!-- Legend -->
-  <line x1="300" y1="600" x2="340" y2="600" stroke="#374151" stroke-width="3"/>
-  <text x="348" y="605" font-size="13" fill="#374151">Built in Sprint 1</text>
-  <line x1="500" y1="600" x2="540" y2="600" stroke="#9ca3af" stroke-width="3" stroke-dasharray="6 4"/>
-  <text x="548" y="605" font-size="13" fill="#6b7280">Upcoming (Sprints 2–6)</text>
+  <rect x="1010" y="422" width="125" height="52" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="1072" y="444" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">HPA</text>
+  <text x="1072" y="461" text-anchor="middle" font-size="11" fill="#b45309">2&#8211;10 pods @ 50% CPU</text>
+
+  <rect x="680" y="488" width="250" height="50" rx="8" fill="#fff1f2" stroke="#e05d44" stroke-width="1.5"/>
+  <text x="805" y="509" text-anchor="middle" font-size="12" font-weight="600" fill="#b91c1c">Prometheus + Grafana</text>
+  <text x="805" y="526" text-anchor="middle" font-size="11" fill="#dc2626">metrics &#183; dashboards &#183; alerts</text>
+
+  <rect x="950" y="488" width="185" height="50" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="1042" y="509" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">metrics-server</text>
+  <text x="1042" y="526" text-anchor="middle" font-size="11" fill="#64748b">resource metrics for HPA</text>
+
+  <!-- Service strip -->
+  <rect x="660" y="575" width="490" height="50" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="905" y="596" text-anchor="middle" font-size="12" font-weight="600" fill="#047857">Service: LoadBalancer</text>
+  <text x="905" y="613" text-anchor="middle" font-size="11" fill="#059669">routes port 80 &#8594; 5000 on app pods</text>
+
+  <!-- (4) deploy -->
+  <line x1="550" y1="380" x2="640" y2="350" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="556" y="405" font-size="12" font-weight="600" fill="#374151">&#9315; deploy (kubectl)</text>
+
+  <!-- (5) pull image -->
+  <line x1="765" y1="245" x2="765" y2="290" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="777" y="272" font-size="12" font-weight="600" fill="#374151">&#9316; pull image</text>
+
+  <!-- Elastic Load Balancer -->
+  <rect x="290" y="560" width="250" height="80" rx="10" fill="#fff7ed" stroke="#ff9900" stroke-width="2"/>
+  <text x="415" y="592" text-anchor="middle" font-size="15" font-weight="700" fill="#c2410c">Elastic Load Balancer</text>
+  <text x="415" y="612" text-anchor="middle" font-size="12" fill="#7c2d12">public entry point</text>
+  <text x="415" y="628" text-anchor="middle" font-size="11" fill="#9a3412">created by the Service</text>
+
+  <!-- (6) user traffic -->
+  <line x1="200" y1="600" x2="290" y2="600" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="210" y="590" font-size="12" font-weight="600" fill="#374151">&#9317; HTTP</text>
+
+  <line x1="540" y1="600" x2="660" y2="600" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="558" y="590" font-size="12" font-weight="600" fill="#374151">forwards traffic</text>
+
+  <!-- Terraform -->
+  <rect x="250" y="735" width="460" height="65" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="480" y="762" text-anchor="middle" font-size="14" font-weight="700" fill="#5b21b6">Terraform — Infrastructure as Code</text>
+  <text x="480" y="782" text-anchor="middle" font-size="12" fill="#6d28d9">provisions VPC &#183; EC2 &#183; EKS &#183; ECR &#183; remote state in S3 (versioned + locked)</text>
+
+  <line x1="480" y1="735" x2="480" y2="717" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrowPurple)"/>
+  <text x="492" y="731" font-size="11" font-weight="600" fill="#7c3aed">provisions</text>
+
+  <!-- Ansible -->
+  <rect x="740" y="735" width="460" height="65" rx="10" fill="#fef2f2" stroke="#cc0000" stroke-width="2"/>
+  <text x="970" y="762" text-anchor="middle" font-size="14" font-weight="700" fill="#991b1b">Ansible — Configuration Management</text>
+  <text x="970" y="782" text-anchor="middle" font-size="12" fill="#b91c1c">configures Jenkins EC2: Docker &#183; kubectl &#183; aws-cli v2 (idempotent playbook)</text>
+
+  <line x1="970" y1="735" x2="970" y2="717" stroke="#cc0000" stroke-width="2" marker-end="url(#arrowRed)"/>
+  <text x="982" y="731" font-size="11" font-weight="600" fill="#cc0000">configures</text>
 </svg>

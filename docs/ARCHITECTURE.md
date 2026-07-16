@@ -6,7 +6,7 @@ This document describes the full architecture of the CI/CD pipeline and the AWS 
 
 ![CI/CD Pipeline Architecture](architecture-diagram.svg)
 
-*Solid = delivered in Sprint 1 (GitHub → Jenkins → Docker → ECR). Dashed = upcoming sprints (Terraform, EKS, Prometheus/Grafana).*
+*Code pushed to GitHub triggers Jenkins, which builds and pushes the Docker image to ECR and deploys it to EKS. Terraform provisions all infrastructure; Ansible configures the Jenkins host; Prometheus + Grafana monitor the cluster.*
 
 ---
 
