@@ -6,6 +6,8 @@
 
   vars:
     kubectl_version: "v1.33.0"
+    aws_region: ap-south-1
+    eks_cluster: herovire-eks
 
   tasks:
     - name: Install base packages
@@ -56,6 +58,12 @@
       args:
         creates: /usr/local/bin/aws
       when: aws_cli_check.rc != 0
+
+    - name: Point kubeconfig at the EKS cluster
+      ansible.builtin.command:
+        cmd: "aws eks update-kubeconfig --region {{ aws_region }} --name {{ eks_cluster }}"
+      become: false
+      changed_when: false
 
   handlers:
     - name: Restart Docker

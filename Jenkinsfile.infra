@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(
+            name: 'ADMIN_IP_CIDR',
+            defaultValue: '',
+            description: 'Your admin IP in CIDR form (e.g. 171.61.116.174/32). Controls SSH/8080 access to Jenkins.'
+        )
+    }
+
+    environment {
+        AWS_REGION  = 'ap-south-1'
+        EKS_CLUSTER = 'herovire-eks'
+        TF_DIR      = 'terraform'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                sh 'terraform -chdir=$TF_DIR init -input=false'
+                sh 'terraform -chdir=$TF_DIR apply -input=false -auto-approve -var=admin_ip_cidr=$ADMIN_IP_CIDR'
+            }
+        }
+
+        stage('Ansible Configure') {
+            steps {
+                script {
+                    def jenkinsIp = sh(
+                        script: 'terraform -chdir=$TF_DIR output -raw jenkins_public_ip',
+                        returnStdout: true
+                    ).trim()
+                    writeFile file: 'ansible/inventory.ini', text: "[jenkins]\n${jenkinsIp}\n"
+                }
+                withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-ssh-key', keyFileVariable: 'SSH_KEY')]) {
+                    dir('ansible') {
+                        sh 'ansible-playbook -i inventory.ini configure-nodes.yml --private-key $SSH_KEY'
+                    }
+                }
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                sh '''
+                    aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER
+                    kubectl get nodes
+                '''
+            }
+        }
+    }
+}
