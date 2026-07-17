@@ -25,6 +25,10 @@ A fully automated pipeline where:
 | [Architecture](docs/ARCHITECTURE.md) | System design, AWS layout, data flow |
 | [Tech Stack](docs/TECH_STACK.md) | Every tool used and why |
 | [Sprint Plan](docs/SPRINT_PLAN.md) | 6 sprints with tasks and learning objectives |
+| [Setup Guide](docs/SETUP_GUIDE.md) | Run the whole pipeline from scratch, step by step |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Real errors encountered and their fixes |
+| [Cost Analysis](docs/COST.md) | Running cost, per-session cost, and how it's kept low |
+| [Modern Alternative](docs/MODERN_ALTERNATIVE.md) | Same pipeline with GitHub Actions + ArgoCD |
 | [Prerequisites](docs/PREREQUISITES.md) | Accounts, tools, and skills needed before starting |
 | [Learning Guide](docs/LEARNING_GUIDE.md) | How to learn each tool in the right order |
 
@@ -63,16 +67,15 @@ Cloud          →  AWS (VPC, EC2, EKS, ECR, S3, IAM)
 ```
 capstone/
 ├── README.md                  ← You are here
-├── docs/                      ← All planning documents
-│   ├── ARCHITECTURE.md
-│   ├── TECH_STACK.md
-│   ├── SPRINT_PLAN.md
-│   ├── PREREQUISITES.md
-│   └── LEARNING_GUIDE.md
+├── docs/                      ← Planning + reference documents
 ├── app/                       ← Web application source code (Sprint 1)
+├── Jenkinsfile                ← App CI/CD pipeline: build → push → deploy → smoke test
+├── Jenkinsfile.infra          ← Infra pipeline: terraform apply → ansible → verify
 ├── terraform/                 ← Infrastructure as Code (Sprint 2)
 ├── ansible/                   ← Configuration playbooks (Sprint 3)
 ├── k8s/                       ← Kubernetes manifests (Sprint 4)
-├── jenkins/                   ← Jenkinsfile and job configs (Sprint 1-4)
-└── monitoring/                ← Prometheus + Grafana configs (Sprint 5)
+├── monitoring/                ← Prometheus + Grafana configs (Sprint 5)
+├── tests/                     ← Smoke + infrastructure tests (Sprint 6)
+├── .github/workflows/         ← GitHub Actions CI (modern alternative, Sprint 6)
+└── argocd/                    ← ArgoCD GitOps app (modern alternative, Sprint 6)
 ```

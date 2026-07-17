@@ -1,0 +1,44 @@
+# Modern CI alternative to the Jenkins build pipeline.
+# Builds the app image and pushes it to ECR — authenticating with short-lived
+# credentials via GitHub OIDC (no long-lived AWS keys stored in GitHub).
+name: CI - build and push to ECR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  id-token: write   # required for OIDC federation with AWS
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 376129434099.dkr.ecr.ap-south-1.amazonaws.com
+  IMAGE_REPO: herovire-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}   # terraform output github_actions_role_arn
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        run: |
+          TAG="${GITHUB_SHA::7}"
+          docker build --platform linux/amd64 -t "$IMAGE_REPO:$TAG" app/
+          docker tag "$IMAGE_REPO:$TAG" "$ECR_REGISTRY/$IMAGE_REPO:$TAG"
+          docker tag "$IMAGE_REPO:$TAG" "$ECR_REGISTRY/$IMAGE_REPO:latest"
+          docker push "$ECR_REGISTRY/$IMAGE_REPO:$TAG"
+          docker push "$ECR_REGISTRY/$IMAGE_REPO:latest"

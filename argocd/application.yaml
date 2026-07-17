@@ -1,0 +1,23 @@
+# Modern CD alternative to the Jenkins deploy stage.
+# ArgoCD watches the k8s/ manifests in git and continuously reconciles the
+# cluster to match — pull-based GitOps instead of Jenkins pushing kubectl apply.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: herovire-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/rohitguptaangular/AWS-CICD-DEVOPS-CAPSTONE.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true      # delete resources removed from git
+      selfHeal: true   # revert manual drift back to the git state
+    syncOptions:
+      - CreateNamespace=true

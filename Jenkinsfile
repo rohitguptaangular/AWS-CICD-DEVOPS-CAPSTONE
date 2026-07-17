@@ -56,6 +56,17 @@ pipeline {
                 }
             }
         }
+
+        stage('Smoke Test') {
+            steps {
+                sh 'chmod +x tests/smoke_test.sh && tests/smoke_test.sh'
+            }
+            post {
+                failure {
+                    sh 'kubectl rollout undo deployment/$IMAGE_REPO || true'
+                }
+            }
+        }
     }
 
     post {
