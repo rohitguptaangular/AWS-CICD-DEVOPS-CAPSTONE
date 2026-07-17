@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION   = 'ap-south-1'
-        ECR_REGISTRY = '859666866036.dkr.ecr.ap-south-1.amazonaws.com'
+        ECR_REGISTRY = '376129434099.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_REPO   = 'herovire-app'
         EKS_CLUSTER  = 'herovire-eks'
         IMAGE_TAG    = "${env.BUILD_NUMBER}"
