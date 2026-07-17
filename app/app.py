@@ -1,6 +1,9 @@
 from flask import Flask
+from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
+metrics.info("herovire_app_info", "Application info", version="1.0.0")
 
 
 @app.route("/")

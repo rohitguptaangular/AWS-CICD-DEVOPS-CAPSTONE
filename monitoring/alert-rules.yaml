@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: herovire-app-rules
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: herovire-app
+      rules:
+        - alert: AppPodDown
+          expr: up{job="herovire-app"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Herovire app target is down"
+            description: "A herovire-app pod has been unreachable for over 2 minutes."
+
+        - alert: HighErrorRate
+          expr: sum(rate(flask_http_request_total{status=~"5.."}[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High 5xx error rate on herovire-app"
+            description: "5xx responses are exceeding 1 per second over the last 5 minutes."

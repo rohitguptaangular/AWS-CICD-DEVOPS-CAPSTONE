@@ -62,5 +62,10 @@ pipeline {
         always {
             sh 'docker image prune -f || true'
         }
+        failure {
+            mail to: 'eiron.rohit@gmail.com',
+                 subject: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "Pipeline failed. Details: ${env.BUILD_URL}"
+        }
     }
 }
