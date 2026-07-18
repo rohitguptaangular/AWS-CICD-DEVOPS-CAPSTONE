@@ -8,7 +8,7 @@ metrics.info("herovire_app_info", "Application info", version="1.0.0")
 
 @app.route("/")
 def home():
-    return "Hello from the Herovire DevOps capstone pipeline! 🚀\n"
+    return "Hello from the Herovire DevOps capstone pipeline! 🚀 — now shipped via GitOps (v2)\n"
 
 
 @app.route("/health")
