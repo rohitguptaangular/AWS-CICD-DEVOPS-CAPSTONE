@@ -12,7 +12,7 @@ on:
 
 permissions:
   id-token: write   # required for OIDC federation with AWS
-  contents: read
+  contents: write   # commit the image-tag bump back to git for ArgoCD to pick up
 
 env:
   AWS_REGION: ap-south-1
@@ -42,3 +42,17 @@ jobs:
           docker tag "$IMAGE_REPO:$TAG" "$ECR_REGISTRY/$IMAGE_REPO:latest"
           docker push "$ECR_REGISTRY/$IMAGE_REPO:$TAG"
           docker push "$ECR_REGISTRY/$IMAGE_REPO:latest"
+
+      # GitOps hand-off: pin the manifest to the immutable SHA tag and commit it
+      # back to main. ArgoCD watches k8s/ in git and reconciles this change onto
+      # the cluster. This commit only touches k8s/**, which is not in the trigger
+      # paths above, so it does not re-run this workflow.
+      - name: Bump deployment image tag for ArgoCD
+        run: |
+          TAG="${GITHUB_SHA::7}"
+          sed -i "s|image: .*/${IMAGE_REPO}:.*|image: ${ECR_REGISTRY}/${IMAGE_REPO}:${TAG}|" k8s/deployment.yaml
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/deployment.yaml
+          git commit -m "ci: deploy ${IMAGE_REPO}:${TAG} [skip ci]" || { echo "manifest already up to date"; exit 0; }
+          git push
