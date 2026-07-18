@@ -52,19 +52,30 @@ AWS key stored in GitHub at all** — the role trusts `repo:<owner>/<name>:*`.
 1. `terraform apply` creates the GitHub OIDC provider + CI role. Copy the
    `github_actions_role_arn` output into a GitHub Actions **repository variable**
    named `AWS_ROLE_ARN`.
-2. Push a change under `app/` → GitHub Actions builds and pushes to ECR via OIDC.
+2. Push a change under `app/` → GitHub Actions builds and pushes to ECR via OIDC,
+   then commits the new image tag back into `k8s/deployment.yaml` for ArgoCD.
 3. Install ArgoCD in the cluster and apply `argocd/application.yaml`:
    ```
    kubectl create namespace argocd
-   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+   # server-side apply — the ApplicationSet CRD is too large for client-side apply
+   kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
    kubectl apply -f argocd/application.yaml
    ```
+   For a **private** repo, also register a read credential so ArgoCD can pull the
+   manifests — a Secret in the `argocd` namespace labelled
+   `argocd.argoproj.io/secret-type: repository` (username + a git token).
    ArgoCD then syncs `k8s/` and keeps the app reconciled to git.
 
-## Note on true GitOps image tags
+## True GitOps image tags — implemented
 
-`k8s/deployment.yaml` uses the `:latest` tag, so ArgoCD redeploys when `latest`
-moves. In strict GitOps the CI job would write the **new image tag back into git**
-(e.g. update the deployment manifest), so every deployed version is recorded in
-git history rather than hidden behind a floating tag. That is the natural next
-step if this pipeline went to production.
+`k8s/deployment.yaml` rests on the `:latest` tag by default. For strict GitOps —
+where every deployed version is recorded in git rather than hidden behind a
+floating tag — `ci.yml` writes the **new image tag back into git**: after pushing
+`herovire-app:<sha>` to ECR, it updates the deployment manifest to that immutable
+SHA tag and commits it to `main`. ArgoCD then sees the git change and reconciles
+the cluster, so git history *is* the record of exactly what is deployed. (That
+commit only touches `k8s/**`, so it does not re-trigger CI.)
+
+Verified end-to-end: a single push under `app/` flips the running app from one
+version to the next automatically — Actions builds and pushes, the manifest bump
+lands in git, and ArgoCD rolls the new pods with no `kubectl` from a human.

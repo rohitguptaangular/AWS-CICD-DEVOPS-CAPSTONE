@@ -31,6 +31,7 @@ A fully automated pipeline where:
 | [Modern Alternative](docs/MODERN_ALTERNATIVE.md) | Same pipeline with GitHub Actions + ArgoCD |
 | [Prerequisites](docs/PREREQUISITES.md) | Accounts, tools, and skills needed before starting |
 | [Learning Guide](docs/LEARNING_GUIDE.md) | How to learn each tool in the right order |
+| [Presentation](docs/PRESENTATION.md) | Final slide deck (Marp) — architecture, stages, demo, challenges, learnings |
 
 ---
 
