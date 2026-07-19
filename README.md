@@ -30,8 +30,8 @@ A fully automated pipeline where:
 | [Cost Analysis](docs/COST.md) | Running cost, per-session cost, and how it's kept low |
 | [Modern Alternative](docs/MODERN_ALTERNATIVE.md) | Same pipeline with GitHub Actions + ArgoCD |
 | [Prerequisites](docs/PREREQUISITES.md) | Accounts, tools, and skills needed before starting |
-| [Learning Guide](docs/LEARNING_GUIDE.md) | How to learn each tool in the right order |
-| [Presentation](docs/PRESENTATION.md) | Final slide deck (Marp) — architecture, stages, demo, challenges, learnings |
+| [Learning Notes](docs/LEARNING_GUIDE.md) | The order I learned each tool in, and how long each took |
+| [Presentation](docs/PRESENTATION.md) | Final slide deck (Marp) - architecture, stages, demo, challenges, learnings |
 
 ---
 

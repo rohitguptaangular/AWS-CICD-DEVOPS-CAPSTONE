@@ -1,4 +1,4 @@
-# Setup Guide — Run This Pipeline From Scratch
+# Setup Guide - Run This Pipeline From Scratch
 
 A step-by-step runbook to bring the whole pipeline up in a fresh AWS account and
 tear it back down. Following this end to end satisfies Sprint 6's "full pipeline
@@ -41,7 +41,7 @@ aws ec2 import-key-pair --key-name jenkins-key \
 
 ## 2. Provision infrastructure (Terraform)
 
-> This is the **bootstrap apply** — run locally. It creates the Jenkins server
+> This is the **bootstrap apply** - run locally. It creates the Jenkins server
 > itself, so it cannot come from Jenkins (see step 5 for the Jenkins-run apply).
 
 ```bash
@@ -69,7 +69,7 @@ kubectl get nodes            # both nodes should be Ready
    `ssh -i ~/.ssh/jenkins-key.pem ec2-user@<jenkins_ip> sudo cat /var/lib/jenkins/secrets/initialAdminPassword`
 2. Install suggested plugins + **Docker Pipeline**, **Amazon ECR**, **Kubernetes CLI**.
 3. Add credentials:
-   - `jenkins-ssh-key` — *SSH Username with private key*, the `jenkins-key.pem`
+   - `jenkins-ssh-key` - *SSH Username with private key*, the `jenkins-key.pem`
      (used by the infra pipeline's Ansible stage).
    - A GitHub **deploy key** (read-only) so Jenkins can clone the repo.
 4. Add the GitHub webhook: repo → Settings → Webhooks →
@@ -77,13 +77,13 @@ kubectl get nodes            # both nodes should be Ready
 
 ## 5. Create the two pipeline jobs
 
-- **App pipeline** — Pipeline job, "Pipeline script from SCM", script path
+- **App pipeline** - Pipeline job, "Pipeline script from SCM", script path
   `Jenkinsfile`. This builds the image, pushes to ECR, deploys to EKS, and runs
   the smoke test. Triggered by the GitHub webhook on every push.
-- **Infra pipeline** — Pipeline job, script path `Jenkinsfile.infra`, parameter
+- **Infra pipeline** - Pipeline job, script path `Jenkinsfile.infra`, parameter
   `ADMIN_IP_CIDR`. Running this executes `terraform apply` + Ansible + a node
   check **from Jenkins** (Sprint 2 tasks 2.9/2.10). Because the Jenkins EC2 is
-  already in state, this apply is an idempotent reconcile — it will not recreate
+  already in state, this apply is an idempotent reconcile - it will not recreate
   the server.
 
 ## 6. Deploy the app + verify
@@ -105,7 +105,7 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
 
 Grafana is exposed as a LoadBalancer (admin/admin).
 
-## 8. Teardown (do this after every session — see COST.md)
+## 8. Teardown (do this after every session - see COST.md)
 
 **Delete both LoadBalancer services first** so their ELBs are freed (orphaned
 ELBs block VPC deletion):
@@ -116,5 +116,5 @@ kubectl delete svc -n monitoring kube-prometheus-stack-grafana
 cd terraform && terraform destroy
 ```
 
-> In this repo the `/deploy` helper automates steps 2–3, 6, and 8; this guide is
+> In this repo the `/deploy` helper automates steps 2-3, 6, and 8; this guide is
 > the manual path it is built on.

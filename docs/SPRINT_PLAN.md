@@ -4,7 +4,7 @@
 
 ---
 
-## Sprint 1 — Architecture, Docker, and Jenkins Setup
+## Sprint 1 - Architecture, Docker, and Jenkins Setup
 
 **Goal:** Jenkins is running on AWS EC2, can build a Docker image, and push it to ECR.
 
@@ -13,7 +13,7 @@
 | # | Task | Description |
 |---|---|---|
 | 1.1 | Finalize architecture diagram | Draw the full system (can use draw.io or pen/paper). Include all AWS resources. |
-| 1.2 | Choose/create the web app | Pick a simple app: Node.js "Hello World", Python Flask, or any existing app. Keep it simple — the app itself is not graded. |
+| 1.2 | Choose/create the web app | Pick a simple app: Node.js "Hello World", Python Flask, or any existing app. Keep it simple - the app itself is not graded. |
 | 1.3 | Write the Dockerfile | Create a Dockerfile that packages your app into a container image. |
 | 1.4 | Create AWS ECR repository | Use AWS console (manually, for now). In Sprint 2, Terraform will do this. |
 | 1.5 | Launch Jenkins EC2 instance | Launch a t3.medium EC2, install Java, install Jenkins. |
@@ -27,8 +27,8 @@
 
 - Understand what a Dockerfile does and how layers work
 - Understand how Jenkins uses a Jenkinsfile (declarative syntax)
-- Understand IAM roles — why we use roles instead of access keys on EC2
-- Understand webhooks — how GitHub notifies Jenkins
+- Understand IAM roles - why we use roles instead of access keys on EC2
+- Understand webhooks - how GitHub notifies Jenkins
 
 ### Definition of Done
 
@@ -40,7 +40,7 @@
 
 ---
 
-## Sprint 2 — AWS Infrastructure with Terraform + Jenkins Integration
+## Sprint 2 - AWS Infrastructure with Terraform + Jenkins Integration
 
 **Goal:** All AWS infrastructure (VPC, EKS, EC2) is defined in Terraform and provisioned by Jenkins.
 
@@ -76,7 +76,7 @@
 
 ---
 
-## Sprint 3 — Configuration Management with Ansible + Jenkins
+## Sprint 3 - Configuration Management with Ansible + Jenkins
 
 **Goal:** EC2 instances are automatically configured (Docker, kubectl installed) by Ansible via Jenkins.
 
@@ -99,7 +99,7 @@
 
 - Understand Ansible inventory and how Ansible finds servers
 - Understand Ansible YAML syntax: play, tasks, modules
-- Understand idempotency — running the same playbook twice gives the same result
+- Understand idempotency - running the same playbook twice gives the same result
 - Understand how Jenkins passes secrets (SSH keys) securely
 
 ### Definition of Done
@@ -112,7 +112,7 @@
 
 ---
 
-## Sprint 4 — Full CI/CD Pipeline to Kubernetes (EKS)
+## Sprint 4 - Full CI/CD Pipeline to Kubernetes (EKS)
 
 **Goal:** A single `git push` triggers the full pipeline ending in a live app on EKS.
 
@@ -120,12 +120,12 @@
 
 | # | Task | Description |
 |---|---|---|
-| 4.1 | Write Kubernetes Deployment manifest | `k8s/deployment.yaml` — defines the app pods (image, replicas, resource limits). |
-| 4.2 | Write Kubernetes Service manifest | `k8s/service.yaml` — type: LoadBalancer to expose app on the internet. |
-| 4.3 | Write Kubernetes HPA manifest | `k8s/hpa.yaml` — HorizontalPodAutoscaler (scale 2-10 pods based on CPU). |
+| 4.1 | Write Kubernetes Deployment manifest | `k8s/deployment.yaml` - defines the app pods (image, replicas, resource limits). |
+| 4.2 | Write Kubernetes Service manifest | `k8s/service.yaml` - type: LoadBalancer to expose app on the internet. |
+| 4.3 | Write Kubernetes HPA manifest | `k8s/hpa.yaml` - HorizontalPodAutoscaler (scale 2-10 pods based on CPU). |
 | 4.4 | Add health check probes | Add `livenessProbe` and `readinessProbe` to the Deployment. |
 | 4.5 | Update Jenkinsfile: multi-stage | Add Deploy stage to existing Jenkinsfile (after build). |
-| 4.6 | Configure kubectl in Jenkins | Jenkins pipeline must run `kubectl apply` — needs kubeconfig. |
+| 4.6 | Configure kubectl in Jenkins | Jenkins pipeline must run `kubectl apply` - needs kubeconfig. |
 | 4.7 | Parameterize image tag | Pipeline uses `$BUILD_NUMBER` as the image tag so each build is unique. |
 | 4.8 | Add rollback step | If deployment fails, automatically rollback: `kubectl rollout undo`. |
 | 4.9 | Test full pipeline | Push a code change → verify new image in ECR → new pods in EKS. |
@@ -135,8 +135,8 @@
 
 - Understand Kubernetes Deployment rolling update strategy
 - Understand what a LoadBalancer service does and how AWS creates an ALB for it
-- Understand health probes — liveness vs readiness
-- Understand HPA — how Kubernetes auto-scales
+- Understand health probes - liveness vs readiness
+- Understand HPA - how Kubernetes auto-scales
 
 ### Definition of Done
 
@@ -148,7 +148,7 @@
 
 ---
 
-## Sprint 5 — Monitoring with Prometheus and Grafana
+## Sprint 5 - Monitoring with Prometheus and Grafana
 
 **Goal:** Dashboards show live metrics; alerts fire when something breaks.
 
@@ -156,7 +156,7 @@
 
 | # | Task | Description |
 |---|---|---|
-| 5.1 | Install Helm | Helm is the Kubernetes package manager — used to install Prometheus/Grafana easily. |
+| 5.1 | Install Helm | Helm is the Kubernetes package manager - used to install Prometheus/Grafana easily. |
 | 5.2 | Install kube-prometheus-stack | Helm chart that installs Prometheus, Grafana, AlertManager in one command. |
 | 5.3 | Configure Prometheus scraping | Ensure Prometheus is scraping your app's `/metrics` endpoint. |
 | 5.4 | Import Grafana dashboards | Import pre-built dashboards: Kubernetes cluster overview, pod resource usage. |
@@ -184,7 +184,7 @@
 
 ---
 
-## Sprint 6 — Testing, Documentation, and Final Review
+## Sprint 6 - Testing, Documentation, and Final Review
 
 **Goal:** Everything is tested end-to-end, documented, and ready for evaluation.
 
@@ -193,7 +193,7 @@
 | # | Task | Description |
 |---|---|---|
 | 6.1 | Write smoke test script | A script that hits the app URL and verifies HTTP 200 response. |
-| 6.2 | Add smoke test to Jenkins | After deployment, run smoke test — fail the pipeline if it returns non-200. |
+| 6.2 | Add smoke test to Jenkins | After deployment, run smoke test - fail the pipeline if it returns non-200. |
 | 6.3 | Write infrastructure test | Use `terratest` or manual checks to verify EKS nodes are Ready. |
 | 6.4 | Document setup guide | Step-by-step guide: how to run this pipeline from scratch. |
 | 6.5 | Document troubleshooting | Common errors and their fixes for each tool. |
@@ -222,10 +222,10 @@
 ## Sprint Summary Timeline
 
 ```
-Week 1-2   : Sprint 1 — Docker + Jenkins
-Week 3-4   : Sprint 2 — Terraform
-Week 5-6   : Sprint 3 — Ansible
-Week 7-8   : Sprint 4 — CI/CD to EKS
-Week 9-10  : Sprint 5 — Monitoring
-Week 11-12 : Sprint 6 — Testing + Docs + Final
+Week 1-2   : Sprint 1 - Docker + Jenkins
+Week 3-4   : Sprint 2 - Terraform
+Week 5-6   : Sprint 3 - Ansible
+Week 7-8   : Sprint 4 - CI/CD to EKS
+Week 9-10  : Sprint 5 - Monitoring
+Week 11-12 : Sprint 6 - Testing + Docs + Final
 ```

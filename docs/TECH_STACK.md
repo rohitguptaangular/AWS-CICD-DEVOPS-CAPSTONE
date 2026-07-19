@@ -1,183 +1,56 @@
 # Technology Stack
 
-Each tool is listed with: what it does, why we use it, and what you will learn from it.
+The tools in the pipeline, why each one is here, and what I actually got out of using it.
 
----
+## Docker
 
-## 1. Docker
+Packages the Flask app and its dependencies into one image so the exact same build runs on my laptop, on Jenkins, and on EKS. Jenkins builds the image, ECR stores it, EKS runs it.
 
-**What:** Packages your application and all its dependencies into a portable "container image."
+Main things I picked up: writing a Dockerfile (FROM, RUN, COPY, CMD), tagging images, and the difference between an image and a container. Also learned the hard way that images built on an Apple Silicon Mac need `--platform linux/amd64` or the pods won't start (details in [TROUBLESHOOTING.md](TROUBLESHOOTING.md)).
 
-**Why in this project:**
-- Makes the app run identically on your laptop, Jenkins, and AWS EKS
-- One Dockerfile → reproducible builds every time
-- Jenkins builds the image; EKS runs it
+## AWS ECR
 
-**What you will learn:**
-- Writing a Dockerfile (FROM, RUN, COPY, CMD)
-- Building and tagging images
-- Pushing images to a registry (ECR)
-- The difference between an image and a container
+Private Docker registry inside AWS. Jenkins pushes here, EKS pulls from here when it deploys pods. The reason it beats DockerHub for this project is auth: the Jenkins EC2 authenticates through its instance-profile IAM role, so no registry credentials are stored anywhere.
 
----
+## Jenkins
 
-## 2. AWS ECR (Elastic Container Registry)
+The automation server at the center of the pipeline. A GitHub webhook triggers it on every push, and it runs the whole chain: build the image, push to ECR, deploy to EKS, smoke test. A second pipeline (`Jenkinsfile.infra`) handles terraform apply and the Ansible playbook.
 
-**What:** A Docker image registry hosted inside AWS (like DockerHub, but private and integrated with AWS IAM).
+Learning it meant getting comfortable with declarative Jenkinsfiles (stages, steps, agents), the credentials store, and a handful of plugins (Docker Pipeline, AWS CLI, Kubernetes CLI, Git). Installing and un-breaking Jenkins itself on EC2 taught me as much as the pipelines did - see the Java 21 crash-loop entry in the troubleshooting doc.
 
-**Why in this project:**
-- Jenkins pushes built images here
-- EKS pulls images from here when deploying pods
-- No credentials needed — uses IAM roles instead
+## Terraform
 
-**What you will learn:**
-- Creating an ECR repository
-- Authenticating Docker to ECR
-- Image tagging conventions (e.g., `myapp:latest`, `myapp:v1.0.3`)
+All AWS infrastructure in this repo (VPC, subnets, security groups, the Jenkins EC2, ECR, the EKS cluster and node group) is defined in `.tf` files instead of being clicked together in the console. That means the whole environment can be destroyed at the end of a work session and recreated identically the next day, which is also how I kept the AWS bill down.
 
----
+Core skills from this sprint: providers, resources, variables and outputs, the init/plan/apply/destroy loop, and remote state in S3 with locking so state survives my laptop.
 
-## 3. Jenkins
+## Ansible
 
-**What:** An open-source automation server that runs your CI/CD pipeline.
+Terraform hands over empty servers; Ansible turns them into useful ones. The playbook installs Docker, kubectl, and the AWS CLI on the Jenkins host over plain SSH. No agent needs to be installed on the target first, which is why I picked it over alternatives.
 
-**Why in this project:**
-- Watches GitHub for new commits (webhook)
-- Orchestrates every stage: build → provision → configure → deploy → monitor
-- Central hub that ties every other tool together
+Along the way I learned inventories, playbook YAML, the common modules (`yum`, `copy`, `service`), handlers, and why idempotency matters: re-running the playbook on an already-configured box changes nothing.
 
-**What you will learn:**
-- Installing Jenkins on EC2
-- Creating a Declarative Pipeline (Jenkinsfile)
-- Using credentials/secrets securely in pipelines
-- Jenkins plugins (Docker, Kubernetes, AWS CLI)
-- Understanding stages, steps, and agents in a Jenkinsfile
+## Kubernetes on AWS EKS
 
----
+Runs the app. A Deployment keeps 2+ replicas alive and restarts crashed pods, a LoadBalancer Service exposes them, and an HPA scales the replica count on CPU. Rolling updates give zero-downtime deploys, which I verified live during the Sprint 4 demo.
 
-## 4. Terraform
+I went with EKS rather than self-managed Kubernetes because AWS runs the control plane; I only manage worker nodes. The trade-off is cost (~$0.10/hr for the control plane) and some EKS-specific glue: aws-auth, kubeconfig via `aws eks update-kubeconfig`, and IAM integration.
 
-**What:** Infrastructure as Code (IaC) tool that lets you define AWS resources in `.tf` files and provision them with a single command.
+The objects I now know well from writing the manifests in `k8s/`: Deployment, Service, HPA, plus liveness/readiness probes and the everyday kubectl verbs (apply, get, describe, logs, exec).
 
-**Why in this project:**
-- Replaces clicking around the AWS console
-- Infrastructure is version-controlled in Git
-- Can recreate the exact same environment (dev, staging, prod) reliably
-- State file in S3 means multiple team members can collaborate
+## Prometheus + Grafana
 
-**What you will learn:**
-- Terraform basics: providers, resources, variables, outputs
-- Writing VPC, subnet, security group, EC2, and EKS resources
-- `terraform init`, `terraform plan`, `terraform apply`, `terraform destroy`
-- Remote state with S3 and state locking with DynamoDB
+Monitoring, installed as the kube-prometheus-stack Helm chart. Prometheus scrapes the nodes, the pods, and the app's `/metrics` endpoint every 15s and stores time series; the alert rules in `monitoring/` fire off it. Grafana sits on top for dashboards - the pre-built Kubernetes ones covered most of what I needed, plus one custom panel for app request rate.
 
----
+This sprint was my introduction to PromQL (`rate()`, `increase()`) and to ServiceMonitors, which took some debugging to get scraping correctly after the AWS account migration.
 
-## 5. Ansible
+## AWS VPC
 
-**What:** Configuration management tool. Connects to servers over SSH and runs tasks (install packages, set configs, start services).
+The network everything lives in. Jenkins sits in a public subnet because GitHub webhooks have to reach it; the EKS worker nodes sit in private subnets behind a NAT gateway, so they can pull images but can't be reached from the internet. Security groups do the per-resource firewalling.
 
-**Why in this project:**
-- After Terraform creates EC2 instances (empty servers), Ansible configures them
-- Installs Docker, kubectl, aws-cli on Jenkins and EKS nodes
-- Ansible is agentless — no software needs to be installed on target servers first
+Writing this in Terraform is where CIDR blocks, public vs private subnets, and Internet Gateway vs NAT Gateway finally clicked for me.
 
-**What you will learn:**
-- Ansible inventory files (list of servers to configure)
-- Writing playbooks (YAML-based task lists)
-- Ansible modules: `apt`, `yum`, `copy`, `template`, `service`
-- Running Ansible from Jenkins
-
----
-
-## 6. Kubernetes (K8s)
-
-**What:** Container orchestration system. Runs and manages your Docker containers at scale.
-
-**Why in this project:**
-- Automatically restarts crashed pods
-- Scales up pods when traffic is high, scales down when low
-- Rolling updates (deploy new version with zero downtime)
-- Load balances traffic across multiple pod replicas
-
-**What you will learn:**
-- Core objects: Pod, Deployment, Service, ConfigMap, HPA
-- Writing YAML manifests
-- `kubectl` commands: apply, get, describe, logs, exec
-- Namespaces and how to organize cluster resources
-- Kubernetes health checks: liveness and readiness probes
-
----
-
-## 7. AWS EKS (Elastic Kubernetes Service)
-
-**What:** AWS-managed Kubernetes. AWS runs and maintains the Kubernetes control plane for you.
-
-**Why in this project:**
-- You only manage worker nodes (EC2 instances); AWS manages the master nodes
-- Deep integration with AWS services (IAM, ECR, ALB, CloudWatch)
-- Production-grade Kubernetes without the operational overhead
-
-**What you will learn:**
-- How EKS differs from self-managed Kubernetes
-- Creating an EKS cluster with Terraform
-- Configuring `kubeconfig` to connect `kubectl` to EKS
-- IAM roles for service accounts (IRSA)
-
----
-
-## 8. Prometheus
-
-**What:** Monitoring system that collects and stores metrics (numbers over time) from your application and infrastructure.
-
-**Why in this project:**
-- Scrapes metrics from Kubernetes nodes, pods, and your app every 15 seconds
-- Stores them in a time-series database
-- Powers the alerting rules
-
-**What you will learn:**
-- How Prometheus scrapes targets (`/metrics` endpoint)
-- PromQL (Prometheus Query Language) basics
-- Setting up alert rules (e.g., "alert if pod restarts > 5 times in 10 minutes")
-- Installing Prometheus in Kubernetes using Helm
-
----
-
-## 9. Grafana
-
-**What:** Visualization tool that connects to Prometheus and displays metrics as beautiful dashboards.
-
-**Why in this project:**
-- Makes Prometheus data human-readable and visual
-- Pre-built dashboards for Kubernetes (CPU, memory, pod status, etc.)
-- Alerting channel that can send messages to email/Slack
-
-**What you will learn:**
-- Connecting Grafana to Prometheus as a data source
-- Importing pre-built dashboards
-- Creating custom panels
-- Setting up alert notifications
-
----
-
-## 10. AWS VPC (Virtual Private Cloud)
-
-**What:** Your own isolated private network inside AWS.
-
-**Why in this project:**
-- Controls exactly which resources can talk to which
-- Jenkins is in a public subnet (reachable from internet for webhooks)
-- EKS nodes are in private subnets (not directly reachable — more secure)
-
-**What you will learn:**
-- VPC CIDR blocks and subnetting
-- Public vs private subnets
-- Internet Gateway vs NAT Gateway
-- Security Groups (stateful firewall rules)
-
----
-
-## Tools Relationship Map
+## How the tools relate
 
 ```
 GitHub ──webhook──► Jenkins

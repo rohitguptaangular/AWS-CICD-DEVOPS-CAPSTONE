@@ -82,7 +82,7 @@ AWS Region (e.g., us-east-1)
 | Service | Purpose | Why This Service |
 |---|---|---|
 | EC2 | Jenkins server | Persistent server to run Jenkins |
-| EKS | Kubernetes cluster | Managed Kubernetes — AWS handles control plane |
+| EKS | Kubernetes cluster | Managed Kubernetes - AWS handles control plane |
 | ECR | Docker image registry | Like DockerHub but inside AWS, integrates with IAM |
 | S3 | Terraform state storage | Durable, shared state so team can collaborate |
 | VPC | Network isolation | Your own private network in AWS |
@@ -116,11 +116,11 @@ EKS Cluster
 
 | Concept | Simple Explanation |
 |---|---|
-| Pod | Smallest unit — one running container (or a few tightly coupled ones) |
+| Pod | Smallest unit - one running container (or a few tightly coupled ones) |
 | Deployment | Says "keep 3 copies of this pod running, always" |
 | Service | Gives pods a stable network address; can expose to internet |
 | HPA | Watches CPU/memory and adds/removes pods automatically |
-| Namespace | Like a folder — separates different apps or teams |
+| Namespace | Like a folder - separates different apps or teams |
 | Node | An EC2 instance that runs your pods |
 
 ---

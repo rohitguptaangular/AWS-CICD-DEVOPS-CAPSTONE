@@ -10,7 +10,7 @@ Everything you need to set up BEFORE starting Sprint 1.
 |---|---|---|
 | **AWS** | Yes (12 months) | Most services used here are in free tier. EKS is NOT free (~$0.10/hr for control plane). |
 | **GitHub** | Yes | Create a repository for your project source code. |
-| **DockerHub** | Yes | Optional — we use ECR, but DockerHub is useful for learning locally. |
+| **DockerHub** | Yes | Optional - we use ECR, but DockerHub is useful for learning locally. |
 
 ### AWS Free Tier Warning
 

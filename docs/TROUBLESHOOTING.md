@@ -16,7 +16,7 @@ The `Jenkinsfile` and GitHub Actions workflow both pin `--platform linux/amd64`.
 
 ### `docker push` denied / not authorized
 **Cause:** ECR needs a login token; it expires.
-**Fix:** re-run `aws ecr get-login-password | docker login --username AWS --password-stdin <registry>`. On the Jenkins EC2 this is keyless via the instance-profile IAM role — no stored keys.
+**Fix:** re-run `aws ecr get-login-password | docker login --username AWS --password-stdin <registry>`. On the Jenkins EC2 this is keyless via the instance-profile IAM role - no stored keys.
 
 ## Jenkins
 
@@ -41,7 +41,7 @@ If GitHub changes ranges, refresh from `https://api.github.com/meta`.
 **Cause:** LoadBalancer services create AWS ELBs that Terraform doesn't own. If
 the Service objects still exist, their ELBs hold ENIs in the VPC and block
 deletion.
-**Fix:** delete **both** LoadBalancer services before destroy — the app
+**Fix:** delete **both** LoadBalancer services before destroy - the app
 (`svc/herovire-app`, ns `default`) and Grafana (ns `monitoring`). Then `terraform destroy`.
 
 ### EKS nodes / `dnf` can't reach the internet
