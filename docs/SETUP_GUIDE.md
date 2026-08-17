@@ -115,6 +115,3 @@ kubectl delete svc herovire-app
 kubectl delete svc -n monitoring kube-prometheus-stack-grafana
 cd terraform && terraform destroy
 ```
-
-> In this repo the `/deploy` helper automates steps 2-3, 6, and 8; this guide is
-> the manual path it is built on.

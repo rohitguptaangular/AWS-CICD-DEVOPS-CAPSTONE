@@ -23,14 +23,11 @@ A fully automated pipeline where:
 | Document | Purpose |
 |---|---|
 | [Architecture](docs/ARCHITECTURE.md) | System design, AWS layout, data flow |
-| [Tech Stack](docs/TECH_STACK.md) | Every tool used and why |
-| [Sprint Plan](docs/SPRINT_PLAN.md) | 6 sprints with tasks and learning objectives |
 | [Setup Guide](docs/SETUP_GUIDE.md) | Run the whole pipeline from scratch, step by step |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Real errors encountered and their fixes |
+| [Tech Stack](docs/TECH_STACK.md) | Every tool used and why |
 | [Cost Analysis](docs/COST.md) | Running cost, per-session cost, and how it's kept low |
 | [Modern Alternative](docs/MODERN_ALTERNATIVE.md) | Same pipeline with GitHub Actions + ArgoCD |
-| [Prerequisites](docs/PREREQUISITES.md) | Accounts, tools, and skills needed before starting |
-| [Learning Notes](docs/LEARNING_GUIDE.md) | The order I learned each tool in, and how long each took |
 | [Presentation](docs/PRESENTATION.md) | Final slide deck (Marp) - architecture, stages, demo, challenges, learnings |
 
 ---
@@ -68,7 +65,7 @@ Cloud          →  AWS (VPC, EC2, EKS, ECR, S3, IAM)
 ```
 capstone/
 ├── README.md                  ← You are here
-├── docs/                      ← Planning + reference documents
+├── docs/                      ← Architecture, setup guide, troubleshooting, cost
 ├── app/                       ← Web application source code (Sprint 1)
 ├── Jenkinsfile                ← App CI/CD pipeline: build → push → deploy → smoke test
 ├── Jenkinsfile.infra          ← Infra pipeline: terraform apply → ansible → verify

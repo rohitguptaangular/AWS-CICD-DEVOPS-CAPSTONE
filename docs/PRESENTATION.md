@@ -5,72 +5,58 @@ title: End-to-End DevOps CI/CD Pipeline on AWS
 ---
 
 <!--
-Presenter notes appear in comments like this throughout the deck.
-To present: open in VS Code with the "Marp for VS Code" extension, or run
-  marp docs/PRESENTATION.md --pdf      # or --pptx
-Slides are separated by `---`.
+To present: open in VS Code with the Marp extension, or run
+  marp docs/PRESENTATION.md --pdf
+Slides are separated by ---
 -->
 
 # End-to-End DevOps CI/CD Pipeline on AWS
 
-**Herovire Capstone - Batch 15**
+Herovire Capstone, Batch 15
 Rohit Gupta
 
-From a `git push` to a running, monitored app on Kubernetes - fully automated.
-
-<!--
-30-second opener: "I built a complete CI/CD pipeline that takes application code
-from GitHub all the way to a running, monitored service on AWS EKS, using the
-standard DevOps toolchain - and I ran it end to end. I'll walk through the
-architecture, each stage, a live demo, the problems I hit, and what I learned."
--->
-
 ---
 
-## The Brief
+## What I built
 
-**Goal:** take a web app from source code to production on AWS, automatically, the way a real DevOps team would.
+A pipeline that takes my app from a `git push` to a running, monitored
+service on AWS, without any manual steps.
 
-Requirements:
-- Containerize the app and build it in CI
-- Provision all infrastructure as code (no clicking in the console)
+What it had to do:
+
+- Containerize the app and build it automatically
+- Create all AWS infrastructure from code, not the console
 - Deploy to a Kubernetes cluster
-- Monitor it and alert on failure
-- Keep it cheap and tear it down cleanly
-
-**Evaluation:** Implementation 75% · Documentation 15% · Cost Optimization 10%
+- Monitor it and alert when something breaks
+- Stay cheap and tear down cleanly
 
 <!--
-Emphasise "no clicking in the console" - everything is reproducible from code.
-The three grading weights shaped my priorities: a working pipeline first,
-clear docs, and disciplined cost control.
+Opener: I built a pipeline that goes from source code to a monitored app on
+EKS, and I ran the whole thing end to end.
 -->
 
 ---
 
-## Architecture - one push, five stages
+## Architecture
 
 ```
 Developer
-   │  git push
-   ▼
-GitHub ──► Jenkins (EC2) ──► Docker build ──► Amazon ECR
-                                                  │
-Terraform (VPC, EKS, IAM, ECR)  ◄── provisions ──┤
-Ansible (configures the Jenkins host)             │
-                                                  ▼
-                              kubectl / rollout ──► Amazon EKS
-                                                  │
-                        Prometheus + Grafana ◄── scrapes /metrics
+   |  git push
+   v
+GitHub --> Jenkins (EC2) --> Docker build --> Amazon ECR
+                                                 |
+Terraform (VPC, EKS, IAM, ECR)  <-- provisions --|
+Ansible (configures Jenkins host)                |
+                                                 v
+                             kubectl / rollout --> Amazon EKS
+                                                 |
+                       Prometheus + Grafana <-- scrapes /metrics
 ```
 
-*(Full diagram on the next slide →)*
-
 <!--
-Trace the arrows with your finger while presenting. The key idea: code flows
-left-to-right into ECR then onto EKS; Terraform stands the platform up
-underneath; Ansible configures the CI host; Prometheus watches it all.
-Region ap-south-1, single AWS account 376129434099.
+Code flows left to right into ECR and then onto EKS. Terraform builds the
+platform underneath. Ansible sets up the Jenkins box. Prometheus watches it.
+Region is ap-south-1.
 -->
 
 ---
@@ -79,235 +65,191 @@ Region ap-south-1, single AWS account 376129434099.
 ![bg fit](architecture-diagram.svg)
 
 <!--
-The full architecture diagram. Walk it top-to-bottom: developer pushes to
-GitHub, Jenkins builds the Docker image and pushes to ECR, Terraform has
-provisioned the VPC/EKS/IAM underneath, kubectl rolls the image onto EKS, and
-Prometheus/Grafana scrape and visualise it.
+Full diagram. Walk it top to bottom.
 -->
 
 ---
 
-## Tech stack at a glance
+## Tools I used
 
-| Stage | Tool | Job |
+| Stage | Tool | What it does |
 |---|---|---|
-| 1. Containerize + CI | **Docker + Jenkins** | Build image, push to ECR |
-| 2. Infrastructure | **Terraform** | VPC, EKS, ECR, IAM (S3-backed state) |
-| 3. Configuration | **Ansible** | Install/configure the Jenkins host |
-| 4. Delivery | **kubectl → EKS** | Roll the image out to the cluster |
-| 5. Monitoring | **Prometheus + Grafana** | Scrape metrics, dashboard, alerts |
+| Build | Docker + Jenkins | Build the image, push to ECR |
+| Infrastructure | Terraform | VPC, EKS, ECR, IAM, state in S3 |
+| Configuration | Ansible | Sets up the Jenkins server |
+| Deploy | kubectl and EKS | Rolls the image onto the cluster |
+| Monitoring | Prometheus + Grafana | Metrics, dashboard, alerts |
 
-App: a small **Flask** service - `/`, `/health`, `/metrics`.
+The app itself is a small Flask service with `/`, `/health` and `/metrics`.
+
+---
+
+## Build and deploy (Jenkins)
+
+The `Jenkinsfile` pipeline runs:
+
+`Checkout -> Build -> ECR login -> Tag and Push -> Deploy -> Smoke Test`
+
+- Images go to ECR, tagged with the build number
+- Deploy runs `kubectl apply` then updates the image tag
+- `kubectl rollout status` gates the build, so it only passes if pods come up healthy
+- If the smoke test fails, the pipeline rolls back with `kubectl rollout undo`
 
 <!--
-This table is the spine of the whole talk - every stage slide that follows maps
-back to one row. If asked "why these tools?": they're the industry-standard,
-open, cloud-agnostic choices - the same stack a real team would use.
+The rollout-status gate is the important bit. Without it the pipeline would
+report success even if the pods never started.
 -->
 
 ---
 
-## Stage 1 - Containerize & Build (Docker + Jenkins)
+## Infrastructure as code (Terraform)
 
-- **Dockerfile** packages the Flask app into a portable image
-- **Jenkins on EC2** runs the pipeline (`Jenkinsfile`), stages:
-  `Checkout → Build → ECR login → Tag & Push → Deploy → Smoke Test`
-- Images pushed to **Amazon ECR** (private registry), tagged by build number
-- Rollback baked in: a failed deploy or smoke test triggers `kubectl rollout undo`
+Everything on AWS is defined in `terraform/`:
+
+- VPC with public and private subnets, plus NAT
+- EKS cluster `herovire-eks`, 2 t3.medium nodes in private subnets
+- ECR repository with a lifecycle policy
+- IAM roles, security groups, OIDC provider
+
+State lives in a versioned S3 bucket, so the environment is reproducible.
+`terraform plan` costs nothing, so I only ran `apply` when I was actually working.
+
+---
+
+## Configuration (Ansible)
+
+Ansible sets up the Jenkins EC2 host: Jenkins, Docker, kubectl and the AWS CLI.
+
+It is idempotent, so re-running it just converges to the same state.
+
+**Why both Terraform and Ansible?**
+Terraform creates the machine. Ansible installs and configures what runs on it.
 
 <!--
-Point out the Jenkinsfile has a failure post-step that emails me and rolls back.
-Gotcha I hit: my Mac is arm64 but EKS nodes are amd64 - I build with
-`--platform linux/amd64` or the pods hit ImagePullBackOff.
+This comes up in vivas. Terraform = provisioning, Ansible = configuration.
+They do different jobs.
 -->
 
 ---
 
-## Stage 2 - Infrastructure as Code (Terraform)
+## Kubernetes
 
-Everything AWS is declared in `terraform/`:
-- **VPC** with public/private subnets + NAT
-- **EKS** cluster `herovire-eks` (2× t3.medium, private subnets)
-- **ECR** repository (with lifecycle + `force_delete`)
-- **IAM** roles, security groups, and OIDC provider
-
-- **Remote state** in a versioned S3 bucket → safe, shareable, locked
-- `terraform plan` is free - I only `apply` when actively working
+- Deployment with 2 replicas
+- Service of type LoadBalancer, so the app is reachable publicly
+- HPA to scale on CPU (needs metrics-server installed)
+- Liveness and readiness probes on `/health`
 
 <!--
-IaC means the entire platform is reproducible: `apply` builds it, `destroy`
-removes it, and the state file is the single source of truth. Remote state in S3
-means I could hand this to a teammate and they'd get the identical environment.
+Show `kubectl get pods` at 2/2 Running and the LB URL returning 200.
 -->
 
 ---
 
-## Stage 3 - Configuration Management (Ansible)
+## Monitoring
 
-- **Ansible** configures the Jenkins EC2 host from scratch:
-  installs Jenkins, Docker, `kubectl`, and the AWS CLI
-- Idempotent - re-running converges to the same state, never half-configured
-- `Jenkinsfile.infra` lets Jenkins run **Terraform** itself (infra-as-a-job)
-
-**Why both Terraform *and* Ansible?**
-Terraform *provisions* the machines; Ansible *configures* what runs on them.
+- Installed kube-prometheus-stack with Helm (Prometheus, Grafana, Alertmanager)
+- The app uses `prometheus-flask-exporter` to expose `/metrics`
+- A ServiceMonitor tells Prometheus to scrape it
+- Grafana dashboard shows request rate: `rate(flask_http_request_total[1m])`
+- Alert `AppPodDown` fires when the scrape target stops responding
 
 <!--
-Common viva question - nail the Terraform-vs-Ansible distinction:
-Terraform = provisioning (create the EC2/VPC/EKS). Ansible = configuration
-(install and set up software on that EC2). They're complementary, not rivals.
+Honest caveat if asked: the alert fires when a live target fails a scrape, not
+when pods scale to zero (the target just disappears). An absent() rule would
+handle that better.
 -->
 
 ---
 
-## Stage 4 - Continuous Delivery to EKS
+## Testing
 
-- Jenkins runs `kubectl apply -f k8s/` then `kubectl set image` to the new tag
-- Kubernetes objects: **Deployment** (2 replicas), **Service** (LoadBalancer), **HPA**
-- `kubectl rollout status` gates the pipeline - deploy only "passes" when healthy
-- App exposed publicly through an AWS **LoadBalancer**
+- `tests/smoke_test.sh` checks that `/` and `/health` return 200
+- `tests/infra_test.sh` checks nodes are Ready, pods Running, LB is up
+- The smoke test runs as a Jenkins stage, so a bad deploy fails the build
+- I ran the full cycle end to end: apply, test, destroy
 
-- Liveness/readiness probes on `/health` keep only healthy pods in rotation
+---
+
+## Bonus: GitOps with GitHub Actions and ArgoCD
+
+I also built a second, more modern path and ran it live:
+
+- GitHub Actions builds and pushes the image, authenticating with OIDC
+  so no AWS keys are stored in GitHub
+- It then updates the image tag in `k8s/deployment.yaml` and commits it
+- ArgoCD watches the repo and syncs the cluster to match
+
+One push took the app from v1 to v2 with no `kubectl` from me.
 
 <!--
-Show the running result: `kubectl get pods` = 2/2 Running, and the public LB URL
-returning 200. The HPA can scale replicas on CPU (needs metrics-server, which I
-install). The rollout-status gate is what makes it *continuous delivery* and not
-just "fire and forget".
+Difference from Jenkins: Jenkins pushes changes to the cluster, ArgoCD pulls
+from git. Git becomes the source of truth.
 -->
 
 ---
 
-## Stage 5 - Monitoring & Alerting (Prometheus + Grafana)
+## Demo
 
-- **kube-prometheus-stack** (Helm) → Prometheus + Grafana + Alertmanager
-- App instrumented with `prometheus-flask-exporter` → exposes `/metrics`
-- A **ServiceMonitor** tells Prometheus to scrape the app
-- **Grafana dashboard**: request rate - `rate(flask_http_request_total[1m])`
-- **Alert**: `AppPodDown` fires when the app's scrape target is down
+1. App running as v1 on its LoadBalancer URL
+2. Push a small change
+3. GitHub Actions goes green
+4. ArgoCD flips from OutOfSync to Synced, pods roll
+5. Refresh, app is now v2
+6. `kubectl scale --replicas=1`, ArgoCD puts it back to 2
 
 <!--
-Observability closes the loop: it's not "deployed" until I can see it's healthy.
-Honest caveat to mention: my AppPodDown alert fires when a live target fails its
-scrape, not on a scale-to-zero (the target just disappears) - an absent()-based
-rule would be the improvement.
+Screenshots as backup if the live demo fails.
+Deleting a pod is Kubernetes healing it. Reverting my scale is ArgoCD healing
+drift from git. Two different layers.
 -->
 
 ---
 
-## Stage 6 - Testing & Quality Gates
+## Problems I ran into
 
-- `tests/smoke_test.sh` - hits the LB, asserts `/` and `/health` return **200**
-- `tests/infra_test.sh` - asserts nodes **Ready**, pods **Running**, LB provisioned
-- Smoke test is a **Jenkins stage** - a non-200 **fails the build** and rolls back
-- Full from-scratch deploy → test → destroy verified end to end
+- My Mac builds arm64 images but the nodes are amd64, so pods failed to pull.
+  Fixed by building with `--platform linux/amd64`
+- Leftover LoadBalancers blocked the VPC from deleting. I now delete the
+  Services before running destroy
+- Prometheus was scraping nothing because the Service was missing an `app` label
+- The ArgoCD CRD was too big for a normal apply, needed `--server-side`
+- ArgoCD kept recreating things during teardown until I deleted the App first
 
 <!--
-This is the "definition of done" for the pipeline: a machine, not me, decides if
-a deploy is good. The scripts exit non-zero on failure so CI can gate on them.
-I verified the whole cycle live: apply → tests pass → destroy, back to ~$0.
+Good story: ArgoCD deployed exactly what git said, which is how I found out my
+remote branch was behind and pointing at an old account. The tool caught a
+mistake I had missed.
 -->
 
 ---
 
-## Bonus - Modern GitOps (GitHub Actions + ArgoCD)
+## Cost
 
-I added a **push-CI + pull-CD** alternative and ran it **live**:
-
-- **GitHub Actions** builds the image and pushes to ECR - authenticating with
-  **OIDC** (short-lived creds, *no* AWS keys stored in GitHub)
-- CI then bumps the image tag in `k8s/deployment.yaml` and commits it back
-- **ArgoCD** watches git and reconciles the cluster to match (`selfHeal`, `prune`)
-
-**Result:** one `git push` → app went **v1 → v2** automatically, no `kubectl`.
-
-<!--
-This is the differentiator. Contrast with Jenkins: Jenkins *pushes* changes to
-the cluster; ArgoCD *pulls* from git - git becomes the single source of truth.
-OIDC = keyless auth, the modern security best practice. I have this working, not
-just written.
--->
+- Running cost is roughly $0.25 to $0.30 per hour (EKS, 2 nodes, NAT, LB)
+- Writing code and running `plan` is free, only `apply` costs anything
+- Kept it small: 2 t3.medium nodes, 3 day metrics retention, one NAT gateway
+- Destroyed everything after each session, so a full build and test cycle
+  cost about $0.25
+- ECR lifecycle policy clears out untagged images
 
 ---
 
-## Live Demo
+## What I learned
 
-1. Show the app responding (**v1**) through its LoadBalancer
-2. `git push` a one-line change to the app
-3. **GitHub Actions** tab - pipeline goes green (OIDC → build → push → bump)
-4. **ArgoCD UI** - app tile flips `OutOfSync` → `Synced`, new pods roll
-5. Refresh the app → now **v2**
-6. **Self-heal:** `kubectl scale --replicas=1` → ArgoCD reverts it to 2 in ~8s
-
-<!--
-Backup plan if live fails: I have screenshots of each step. Talking point for
-step 6: deleting a pod is *Kubernetes* self-healing (ReplicaSet); reverting my
-manual scale is *ArgoCD* self-healing (drift from git). Two layers.
--->
-
----
-
-## Cost Optimization (10% of grade)
-
-- Running cost ≈ **$0.25-0.30/hr** (EKS control plane + 2 nodes + NAT + LB)
-- `terraform plan` and all code work is **free** - only `apply` costs money
-- **Right-sized**: 2× t3.medium, 3-day metrics retention, single NAT
-- **Destroy after every session** → a full build→verify→destroy cycle ≈ **$0.25**
-- ECR lifecycle policy expires untagged images automatically
-
-<!--
-Cost discipline was a deliberate practice, not an afterthought. The habit:
-write and plan for free, apply only while actively demoing, always destroy.
-The remote state + IaC make tearing down and rebuilding cheap and safe.
--->
-
----
-
-## Challenges I hit (and fixed)
-
-- **arm64 vs amd64** - Mac builds arm64, nodes are amd64 → `--platform linux/amd64`
-- **Orphaned LoadBalancers blocked VPC deletion** → delete Services *before* destroy
-- **ServiceMonitor scraped nothing** → Service needed a `labels.app` (not just selector)
-- **ArgoCD CRD too large** for client-side apply → `kubectl apply --server-side`
-- **ArgoCD vs teardown** → `selfHeal` recreated deleted pods → remove the App first
-- **Git drift** - ArgoCD caught that `main` was behind local & pointing at an old account
-
-<!--
-Pick 2-3 to tell as stories. The ArgoCD-caught-drift one is great: it *proved*
-GitOps works - ArgoCD faithfully deployed what git said, which surfaced that my
-remote was stale. The tool caught a mistake I'd have missed.
--->
-
----
-
-## Key Learnings
-
-- **Infrastructure as Code** - reproducible, reviewable, disposable environments
-- **Provision vs configure** - Terraform and Ansible do different jobs
-- **Push vs pull delivery** - Jenkins pushes; ArgoCD pulls from git
-- **Keyless auth (OIDC)** - short-lived creds beat stored secrets
-- **Observability** - a deploy isn't done until you can *see* it's healthy
-- **Cost discipline** - plan free, apply briefly, always tear down
-
-<!--
-Frame these as things I'd carry into a real job, not just facts I memorised.
-The biggest shift: thinking of infrastructure as code and git as the source of
-truth for *everything* - app and platform alike.
--->
+- Infrastructure as code makes environments reproducible and disposable
+- Terraform and Ansible solve different problems
+- Push based delivery (Jenkins) and pull based delivery (ArgoCD) are both valid
+- OIDC and short lived credentials are better than storing secrets
+- A deploy is not finished until you can see that it is healthy
+- Cost control has to be a habit, not something you fix at the end
 
 ---
 
 ## Summary
 
-- Built a complete pipeline: **GitHub → Jenkins → Docker → ECR → Terraform → Ansible → EKS → Prometheus/Grafana**
-- Added and **ran live** a modern **GitOps** path (GitHub Actions + ArgoCD)
-- Tested, documented, cost-controlled, and fully reproducible
+GitHub to Jenkins to Docker to ECR to Terraform to Ansible to EKS,
+with Prometheus and Grafana on top, plus a working GitOps path.
 
-**One `git push` → a running, monitored app on Kubernetes.**
+One `git push` gets me a running, monitored app on Kubernetes.
 
-## Thank you - questions?
-
-<!--
-Close with the one-liner. Have the repo, the architecture diagram, and the
-Actions/ArgoCD screenshots ready to pull up for questions.
--->
+## Thank you. Questions?

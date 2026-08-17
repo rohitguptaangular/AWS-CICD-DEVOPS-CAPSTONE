@@ -2,201 +2,208 @@
 
 ## Overview
 
-This document describes the full architecture of the CI/CD pipeline and the AWS infrastructure it manages.
+This document describes the CI/CD pipeline and the AWS infrastructure it manages,
+as actually built. Everything here is provisioned by the Terraform in `terraform/`.
 
 ![CI/CD Pipeline Architecture](architecture-diagram.svg)
 
-*Code pushed to GitHub triggers Jenkins, which builds and pushes the Docker image to ECR and deploys it to EKS. Terraform provisions all infrastructure; Ansible configures the Jenkins host; Prometheus + Grafana monitor the cluster.*
+*Code pushed to GitHub triggers Jenkins, which builds and pushes the Docker image to
+ECR and deploys it to EKS. Terraform provisions all infrastructure; Ansible configures
+the Jenkins host; Prometheus and Grafana monitor the cluster.*
+
+Region is `ap-south-1`. The two availability zones are picked at plan time from
+`aws_availability_zones`, so the stack is not pinned to specific AZ names.
 
 ---
 
-## High-Level Data Flow
+## What happens on a push
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        DEVELOPER                                │
-│                git push → GitHub Repository                     │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │ Webhook (HTTP trigger)
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    JENKINS (AWS EC2)                            │
-│                                                                 │
-│  Stage 1: BUILD                                                 │
-│    └─ docker build → docker push → AWS ECR                      │
-│                                                                 │
-│  Stage 2: INFRASTRUCTURE (Terraform)                            │
-│    └─ terraform apply → creates VPC, EKS, EC2                   │
-│    └─ state stored in S3                                        │
-│                                                                 │
-│  Stage 3: CONFIGURATION (Ansible)                               │
-│    └─ ansible-playbook → installs Docker, kubectl on nodes      │
-│                                                                 │
-│  Stage 4: DEPLOY (kubectl)                                      │
-│    └─ kubectl apply → deploys app pods to EKS                   │
-│                                                                 │
-│  Stage 5: MONITOR                                               │
-│    └─ Prometheus scrapes metrics                                │
-│    └─ Grafana shows dashboards                                  │
-│    └─ Alerts sent back to Jenkins / Email                       │
-└─────────────────────────────────────────────────────────────────┘
+Developer
+   |  git push
+   v
+GitHub  --webhook (port 8080)-->  Jenkins on EC2
+                                     |
+                                     |  Jenkinsfile
+                                     v
+                    Checkout -> Build image -> ECR login
+                             -> Tag & Push -> Deploy to EKS
+                             -> Smoke Test
+                                     |
+                                     v
+                    ECR  --image pull-->  EKS worker nodes
+                                     |
+                            Service (LoadBalancer)
+                                     |
+                                     v
+                                   Users
 ```
+
+Provisioning and configuration are a **separate pipeline** (`Jenkinsfile.infra`), not
+stages of the app build:
+
+```
+Jenkinsfile.infra:  Checkout -> Terraform Apply -> Ansible Configure -> Verify
+```
+
+They are split because they run on different cadences. The app pipeline runs on every
+push; the infra pipeline runs only when infrastructure changes.
 
 ---
 
 ## AWS Infrastructure Layout
 
 ```
-AWS Region (e.g., us-east-1)
+Region: ap-south-1
 │
 └── VPC: 10.0.0.0/16
     │
-    ├── Public Subnet: 10.0.1.0/24  (Availability Zone A)
-    │   ├── Jenkins EC2 Instance        ← CI/CD server
-    │   └── Application Load Balancer   ← Entry point for users
+    ├── Public Subnet:  10.0.1.0/24   (AZ a)
+    │   ├── Jenkins EC2 (t3.medium, Amazon Linux 2023, static EIP)
+    │   └── Load Balancer for the app Service
     │
-    ├── Public Subnet: 10.0.2.0/24  (Availability Zone B)
-    │   └── (redundancy / ALB)
+    ├── Public Subnet:  10.0.2.0/24   (AZ b)
     │
-    ├── Private Subnet: 10.0.3.0/24 (Availability Zone A)
-    │   └── EKS Worker Nodes (EC2)
+    ├── Private Subnet: 10.0.11.0/24  (AZ a)
+    │   └── EKS worker nodes
     │
-    ├── Private Subnet: 10.0.4.0/24 (Availability Zone B)
-    │   └── EKS Worker Nodes (EC2)
+    ├── Private Subnet: 10.0.12.0/24  (AZ b)
+    │   └── EKS worker nodes
     │
-    ├── Internet Gateway                ← Public subnets use this
-    └── NAT Gateway                     ← Private subnets use this to reach internet
+    ├── Internet Gateway   ← route for the public subnets
+    └── NAT Gateway (one)  ← private subnets reach the internet through this
 ```
 
-### Why Public vs Private Subnets?
+### Why public vs private subnets
 
-| Subnet Type | What Goes Here | Why |
+| Subnet | What runs there | Reason |
 |---|---|---|
-| Public | Jenkins EC2, Load Balancer | Need to receive traffic from internet |
-| Private | EKS worker nodes (your app pods) | Apps should NOT be directly reachable; only via Load Balancer |
+| Public | Jenkins EC2, load balancer | Must accept traffic from the internet |
+| Private | EKS worker nodes | Pods should not be directly reachable; traffic arrives via the load balancer |
+
+There is a **single NAT gateway** rather than one per AZ. One NAT is a single point of
+failure for outbound traffic from private subnets, which a production setup would not
+accept, but it roughly halves the NAT cost and is the right trade for this project.
 
 ---
 
 ## AWS Services Used
 
-| Service | Purpose | Why This Service |
+| Service | Purpose | Why this service |
 |---|---|---|
-| EC2 | Jenkins server | Persistent server to run Jenkins |
-| EKS | Kubernetes cluster | Managed Kubernetes - AWS handles control plane |
-| ECR | Docker image registry | Like DockerHub but inside AWS, integrates with IAM |
-| S3 | Terraform state storage | Durable, shared state so team can collaborate |
-| VPC | Network isolation | Your own private network in AWS |
-| IAM | Permissions & roles | Jenkins needs permission to talk to EKS, ECR, etc. |
-| ALB | Load Balancer | Distributes user traffic across multiple app pods |
-| CloudWatch | Log aggregation | Kubernetes and EC2 logs centrally |
+| EC2 | Jenkins server | Persistent host for the CI/CD orchestrator |
+| EKS | Kubernetes cluster | Managed control plane, so AWS runs and patches it |
+| ECR | Image registry | Private registry inside AWS, authenticated by IAM instead of stored credentials |
+| S3 | Terraform state | Durable, versioned, shareable remote state |
+| VPC | Network isolation | Own network, with public and private tiers |
+| IAM | Roles and permissions | Instance roles instead of hardcoded keys |
+| ELB | Load balancer | Created automatically by the Kubernetes Service |
+
+The app `Service` is `type: LoadBalancer` with no extra annotations, so EKS provisions a
+**Classic Load Balancer**. An ALB would need the AWS Load Balancer Controller and an
+Ingress, which this project does not install.
 
 ---
 
-## Kubernetes (EKS) Cluster Layout
+## EKS Cluster Layout
 
 ```
-EKS Cluster
+EKS Cluster: herovire-eks
 │
-├── kube-system namespace        ← Kubernetes internal components
-│   ├── coredns                  (DNS resolution inside cluster)
-│   └── aws-node                 (Networking plugin)
+├── kube-system
+│   ├── coredns          (in-cluster DNS)
+│   ├── aws-node         (VPC CNI networking)
+│   └── metrics-server   (installed separately; the HPA needs it)
 │
-├── default namespace            ← Your web application
-│   ├── Deployment               (defines how many app replicas to run)
-│   ├── Service (LoadBalancer)   (exposes app to the internet)
-│   └── HorizontalPodAutoscaler  (scales pods up/down based on CPU)
+├── default              ← the application
+│   ├── Deployment              herovire-app, 2 replicas
+│   ├── Service                 type LoadBalancer, public entry point
+│   └── HorizontalPodAutoscaler 2 to 10 replicas at 50% CPU
 │
-└── monitoring namespace         ← Prometheus + Grafana
-    ├── Prometheus Deployment    (collects metrics)
-    ├── Grafana Deployment       (visualizes metrics)
-    └── AlertManager             (sends alerts)
+└── monitoring           ← kube-prometheus-stack, installed with Helm
+    ├── Prometheus       (scrapes the app and the nodes)
+    ├── Grafana          (dashboards, exposed as a LoadBalancer)
+    └── Alertmanager     (alert routing)
 ```
 
-### Key Kubernetes Concepts (for learning)
+Node group: 2 x t3.medium in the private subnets, desired 2, min 1, max 3, on-demand
+capacity. The HPA scales pods between 2 and 10; the node group bounds how many nodes
+those pods spread across. There is no Cluster Autoscaler installed, so if pod demand
+ever exceeded what 3 nodes can hold, the extra pods would stay `Pending` rather than
+triggering new nodes. For an app this small that ceiling is never reached, but it is
+the next thing to add before this could take real traffic.
 
-| Concept | Simple Explanation |
+Pods expose `/metrics` via `prometheus-flask-exporter`, and a `ServiceMonitor` tells
+Prometheus to scrape them. The Service needs an `app` label of its own for that to
+work, not just a selector.
+
+---
+
+## Security
+
+**IAM roles, no static credentials anywhere in the pipeline.**
+
+| Role | Permissions | Note |
+|---|---|---|
+| Jenkins EC2 role | `AdministratorAccess` | Broad on purpose, see below |
+| EKS cluster role | `AmazonEKSClusterPolicy` | Standard control plane role |
+| EKS node role | `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, `AmazonEC2ContainerRegistryReadOnly` | Nodes only pull images, never push |
+| GitHub Actions role | `AmazonEC2ContainerRegistryPowerUser` | Assumed via OIDC, no stored AWS keys |
+
+The Jenkins role holds `AdministratorAccess` because the infra pipeline runs
+`terraform apply` from Jenkins, and that apply creates VPC, IAM, EKS and EC2 resources.
+Scoping it precisely would mean enumerating every permission Terraform needs across all
+of those services. In production this would be a scoped provisioning role, or Jenkins
+would assume a role via OIDC the way the GitHub Actions path already does. It is called
+out in `terraform/ec2-jenkins.tf` rather than left implicit.
+
+**Security groups**
+
+```
+Jenkins SG
+├── 22   from admin IP only          (SSH)
+├── 8080 from admin IP only          (Jenkins UI)
+├── 8080 from GitHub webhook ranges  (push notifications)
+└── all outbound                     (required, or dnf and Docker pulls fail)
+```
+
+The admin IP is passed in as `admin_ip_cidr` at apply time rather than hardcoded,
+because a home connection does not keep a fixed address.
+
+EKS worker nodes sit in private subnets with no public IPs, so they are reachable only
+through the load balancer and from inside the VPC.
+
+---
+
+## GitOps path (additional)
+
+Alongside the Jenkins pipeline there is a second delivery route, described fully in
+[MODERN_ALTERNATIVE.md](MODERN_ALTERNATIVE.md):
+
+```
+git push -> GitHub Actions -> OIDC to AWS -> build + push to ECR
+         -> commit new image tag into k8s/deployment.yaml
+                                  |
+                     ArgoCD (in cluster) watches the repo
+                                  |
+                          reconciles EKS to match git
+```
+
+The difference is direction. Jenkins **pushes** changes into the cluster; ArgoCD
+**pulls** the desired state from git and corrects drift. The Terraform for the OIDC
+provider and role is in `terraform/github-oidc.tf`.
+
+---
+
+## Design choices that control cost
+
+| Choice | Effect |
 |---|---|
-| Pod | Smallest unit - one running container (or a few tightly coupled ones) |
-| Deployment | Says "keep 3 copies of this pod running, always" |
-| Service | Gives pods a stable network address; can expose to internet |
-| HPA | Watches CPU/memory and adds/removes pods automatically |
-| Namespace | Like a folder - separates different apps or teams |
-| Node | An EC2 instance that runs your pods |
+| Single NAT gateway instead of one per AZ | Removes a fixed hourly charge per extra AZ |
+| t3.medium nodes, desired 2 | Smallest size that comfortably runs the app plus the monitoring stack |
+| Node group min 1, max 3 | Cluster cannot silently scale into a large bill |
+| 3 day Prometheus retention | Keeps monitoring storage small |
+| ECR lifecycle policy on untagged images | Old layers expire instead of accumulating |
+| `terraform destroy` after every session | The stack only costs money while actively in use |
 
----
-
-## CI/CD Pipeline Stages (Jenkins)
-
-```
-git push
-   │
-   ▼
-[Stage 1: Build]
-   ├── Checkout code from GitHub
-   ├── Run unit tests
-   ├── docker build -t myapp:$BUILD_NUMBER .
-   └── docker push to AWS ECR
-
-   ▼
-[Stage 2: Infrastructure]
-   ├── terraform init
-   ├── terraform plan       ← shows what will change
-   └── terraform apply      ← creates/updates AWS resources
-
-   ▼
-[Stage 3: Configure]
-   ├── ansible-playbook configure-nodes.yml
-   ├── Install: Docker, kubectl, aws-cli on nodes
-   └── Configure: kubeconfig, security settings
-
-   ▼
-[Stage 4: Deploy]
-   ├── kubectl apply -f k8s/deployment.yaml
-   ├── kubectl apply -f k8s/service.yaml
-   ├── kubectl rollout status deployment/myapp
-   └── kubectl apply -f k8s/hpa.yaml
-
-   ▼
-[Stage 5: Verify + Monitor]
-   ├── Run smoke tests (is the app responding?)
-   ├── Prometheus scrapes /metrics endpoint
-   ├── Grafana dashboard auto-updates
-   └── Alert if deployment failed → Jenkins sends email
-```
-
----
-
-## Security Architecture
-
-```
-IAM Roles (no hardcoded credentials):
-├── Jenkins EC2 Role
-│   ├── ECR: push/pull images
-│   ├── EKS: describe/manage cluster
-│   ├── S3: read/write terraform state
-│   └── EC2: describe instances
-│
-└── EKS Node Role
-    ├── ECR: pull images
-    └── CloudWatch: send logs
-
-Network Security Groups:
-├── Jenkins SG:  Allow port 8080 (web UI) from your IP only
-│                Allow port 22 (SSH) from your IP only
-└── EKS SG:     Allow traffic only from Jenkins and ALB
-```
-
----
-
-## Cost Optimization Notes
-
-The evaluation gives 10% weight to cost optimization. Key strategies:
-
-| Strategy | Implementation |
-|---|---|
-| Right-size instances | Use t3.medium for Jenkins, t3.small for EKS nodes |
-| Auto-scaling | HPA scales pods down when traffic is low |
-| Spot instances | EKS node group can use spot instances for dev/test |
-| Destroy when not in use | `terraform destroy` when done testing |
-| S3 lifecycle policy | Move old terraform state to cheaper storage class |
-| Single NAT Gateway | Use one NAT GW (not one per AZ) for lower cost |
+Figures and per-session numbers are in [COST.md](COST.md).
