@@ -57,6 +57,28 @@ resource "aws_eks_access_policy_association" "jenkins_admin" {
   depends_on = [aws_eks_access_entry.jenkins]
 }
 
+# Cluster access must not depend on which principal happened to run the apply.
+# bootstrap_cluster_creator_admin_permissions grants admin to the creator only, so
+# when Jenkins created this cluster the workstation user lost kubectl access. Both
+# principals are declared here instead.
+resource "aws_eks_access_entry" "admin" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = var.admin_principal_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "admin" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = var.admin_principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.admin]
+}
+
 data "aws_iam_policy_document" "eks_node_assume" {
   statement {
     actions = ["sts:AssumeRole"]

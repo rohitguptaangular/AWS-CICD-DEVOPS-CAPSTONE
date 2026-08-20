@@ -10,6 +10,12 @@ variable "project_name" {
   default     = "herovire"
 }
 
+variable "admin_principal_arn" {
+  description = "IAM principal that administers the cluster from a workstation"
+  type        = string
+  default     = "arn:aws:iam::376129434099:user/anjaliiam"
+}
+
 variable "eks_version" {
   description = "Kubernetes version (must be in standard support)"
   type        = string
