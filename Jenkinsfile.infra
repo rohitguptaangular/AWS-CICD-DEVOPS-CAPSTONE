@@ -1,18 +1,15 @@
+// Applies the platform layer only (EKS, ECR, OIDC). The Jenkins host and the
+// network live in the bootstrap layer, which this pipeline never applies - if
+// it did, a change to the Jenkins instance would replace the machine running
+// the build. Bootstrap is applied by hand; see docs/SETUP_GUIDE.md.
 pipeline {
     agent any
 
-    parameters {
-        string(
-            name: 'ADMIN_IP_CIDR',
-            defaultValue: '',
-            description: 'Your admin IP in CIDR form (e.g. 171.61.116.174/32). Controls SSH/8080 access to Jenkins.'
-        )
-    }
-
     environment {
-        AWS_REGION  = 'ap-south-1'
-        EKS_CLUSTER = 'herovire-eks'
-        TF_DIR      = 'terraform'
+        AWS_REGION     = 'ap-south-1'
+        EKS_CLUSTER    = 'herovire-eks'
+        TF_PLATFORM    = 'terraform/platform'
+        TF_BOOTSTRAP   = 'terraform/bootstrap'
     }
 
     stages {
@@ -24,16 +21,19 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                sh 'terraform -chdir=$TF_DIR init -input=false'
-                sh 'terraform -chdir=$TF_DIR apply -input=false -auto-approve -var=admin_ip_cidr=$ADMIN_IP_CIDR'
+                sh 'terraform -chdir=$TF_PLATFORM init -input=false'
+                sh 'terraform -chdir=$TF_PLATFORM apply -input=false -auto-approve'
             }
         }
 
         stage('Ansible Configure') {
             steps {
                 script {
+                    // Read-only: the Jenkins host address comes from the bootstrap
+                    // state. This pipeline reads that state but never applies it.
+                    sh 'terraform -chdir=$TF_BOOTSTRAP init -input=false'
                     def jenkinsIp = sh(
-                        script: 'terraform -chdir=$TF_DIR output -raw jenkins_public_ip',
+                        script: 'terraform -chdir=$TF_BOOTSTRAP output -raw jenkins_public_ip',
                         returnStdout: true
                     ).trim()
                     writeFile file: 'ansible/inventory.ini', text: "[jenkins]\n${jenkinsIp}\n"

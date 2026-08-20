@@ -41,20 +41,45 @@ aws ec2 import-key-pair --key-name jenkins-key \
 
 ## 2. Provision infrastructure (Terraform)
 
-> This is the **bootstrap apply** - run locally. It creates the Jenkins server
-> itself, so it cannot come from Jenkins (see step 5 for the Jenkins-run apply).
+Terraform is split into two root modules with **separate state files**, and the
+order matters - `platform` reads `bootstrap`'s outputs:
+
+| Module | Contains | Applied by |
+|---|---|---|
+| `terraform/bootstrap` | VPC, subnets, NAT, Jenkins SG, Jenkins EC2 + EIP + IAM role | a human, from a laptop |
+| `terraform/platform` | EKS cluster + nodes, ECR, GitHub OIDC role | the Jenkins infra pipeline |
+
+The split exists because Jenkins must not manage the machine it runs on. When
+both layers were one module, an apply from Jenkins that changed the instance
+(a `user_data` edit, say) replaced the EC2 mid-build and killed the job. The
+Jenkins host is not in the `platform` state, so that can no longer happen.
+
+**a. Bootstrap** - network + the Jenkins server. Run locally:
 
 ```bash
-cd terraform
+cd terraform/bootstrap
 terraform init
-terraform plan -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"
+terraform plan  -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"
 terraform apply -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"
 ```
 
-Creates: VPC (2 public + 2 private subnets, IGW, NAT), ECR repo, Jenkins EC2
-(with a static EIP), EKS cluster + 2 worker nodes, and the GitHub OIDC role.
-Useful outputs: `jenkins_url`, `ecr_repository_url`, `eks_cluster_name`,
-`github_actions_role_arn`.
+Outputs: `jenkins_url`, `jenkins_public_ip`, subnet ids, plus `jenkins_sg_id`
+and `jenkins_role_arn` which the platform module consumes.
+
+**b. Platform** - EKS, ECR, OIDC. Run locally the first time; after that the
+Jenkins infra pipeline owns it:
+
+```bash
+cd terraform/platform
+terraform init
+terraform apply
+```
+
+Outputs: `ecr_repository_url`, `eks_cluster_name`, `github_actions_role_arn`.
+
+`admin_ip_cidr` is only a bootstrap concern (it gates SSH and the Jenkins UI),
+so the platform apply takes no variables - which is why the infra pipeline no
+longer needs a parameter.
 
 ## 3. Point kubectl at the cluster
 
@@ -80,11 +105,12 @@ kubectl get nodes            # both nodes should be Ready
 - **App pipeline** - Pipeline job, "Pipeline script from SCM", script path
   `Jenkinsfile`. This builds the image, pushes to ECR, deploys to EKS, and runs
   the smoke test. Triggered by the GitHub webhook on every push.
-- **Infra pipeline** - Pipeline job, script path `Jenkinsfile.infra`, parameter
-  `ADMIN_IP_CIDR`. Running this executes `terraform apply` + Ansible + a node
-  check **from Jenkins** (Sprint 2 tasks 2.9/2.10). Because the Jenkins EC2 is
-  already in state, this apply is an idempotent reconcile - it will not recreate
-  the server.
+- **Infra pipeline** - Pipeline job, script path `Jenkinsfile.infra`, no
+  parameters. Running this executes `terraform apply` against
+  **`terraform/platform` only**, then Ansible, then a node check, all **from
+  Jenkins** (Sprint 2 tasks 2.9/2.10). It reads `terraform/bootstrap`'s state to
+  find the Jenkins host for the Ansible stage, but never applies it - so the
+  build cannot replace its own executor.
 
 ## 6. Deploy the app + verify
 
@@ -130,11 +156,22 @@ Then open http://localhost:3000 - the dashboard is "Herovire App".
 
 ## 8. Teardown (do this after every session - see COST.md)
 
-**Delete both LoadBalancer services first** so their ELBs are freed (orphaned
-ELBs block VPC deletion):
+**Delete any LoadBalancer services first** so their ELBs are freed (orphaned
+ELBs hold VPC ENIs and block VPC deletion). Grafana is a ClusterIP, so normally
+only the app has one - but check, because a Grafana service switched to
+LoadBalancer during a demo will block the destroy too:
 
 ```bash
-kubectl delete svc herovire-app
-kubectl delete svc -n monitoring kube-prometheus-stack-grafana
-cd terraform && terraform destroy
+kubectl delete namespace monitoring --ignore-not-found
+kubectl delete -f k8s/ --ignore-not-found
+aws elb describe-load-balancers --region ap-south-1 \
+  --query 'LoadBalancerDescriptions[].LoadBalancerName'   # wait until []
+```
+
+Then destroy in **reverse dependency order** - platform first, because
+bootstrap owns the VPC that platform's resources sit in:
+
+```bash
+cd terraform/platform  && terraform destroy
+cd ../bootstrap        && terraform destroy -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"
 ```

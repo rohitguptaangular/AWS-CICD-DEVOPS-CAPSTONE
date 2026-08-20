@@ -3,7 +3,10 @@
 ## Overview
 
 This document describes the CI/CD pipeline and the AWS infrastructure it manages,
-as actually built. Everything here is provisioned by the Terraform in `terraform/`.
+as actually built. Everything here is provisioned by the Terraform in `terraform/`,
+which is split into two root modules with separate state - `bootstrap/` (network and
+the Jenkins server, applied by hand) and `platform/` (EKS, ECR, OIDC, applied by the
+Jenkins infra pipeline). See "Why the Terraform is split in two" below.
 
 ![CI/CD Pipeline Architecture](architecture-diagram.svg)
 
@@ -73,6 +76,33 @@ Region: ap-south-1
     ├── Internet Gateway   ← route for the public subnets
     └── NAT Gateway (one)  ← private subnets reach the internet through this
 ```
+
+### Why the Terraform is split in two
+
+| Module | State key | Contains | Applied by |
+|---|---|---|---|
+| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | VPC, subnets, IGW, NAT, Jenkins SG, Jenkins EC2 + EIP + IAM role | a human, from a laptop |
+| `terraform/platform` | `platform/terraform.tfstate` | EKS cluster + node group, ECR, GitHub OIDC role, EKS API ingress rule | the Jenkins infra pipeline |
+
+This started as one module, and that was a mistake I only found by running the
+infra pipeline for real. `Jenkinsfile.infra` applied the whole stack **including the
+Jenkins EC2**. When the instance's `user_data` changed, Terraform correctly decided the
+instance had to be replaced - and stopped the machine the build was executing on. The
+build died mid-apply, and the Terraform run was interrupted partway through.
+
+It is worth being precise: this was not an infinite loop. `terraform apply` is
+idempotent, so when the Jenkins host is unchanged the apply is a no-op and the pipeline
+passes. The failure mode is narrower and nastier - a *self-destruct on
+self-modification*, which only appears the moment you change the CI server's own
+definition.
+
+The fix is to make the dependency one-way. `platform` reads `bootstrap` through a
+`terraform_remote_state` data source (it needs the subnet ids, the Jenkins SG id and the
+Jenkins role ARN), but the Jenkins host is not in the `platform` state, so an apply from
+Jenkins cannot touch it. The general rule: **a CI server should not manage the
+infrastructure it runs on.** The alternative solution is an ephemeral runner - which is
+what the GitHub Actions path already does, since a runner that is created and destroyed
+per job has no permanent identity to protect.
 
 ### Why public vs private subnets
 

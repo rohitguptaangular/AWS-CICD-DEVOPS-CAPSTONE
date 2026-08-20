@@ -104,15 +104,45 @@ report success even if the pods never started.
 
 ## Infrastructure as code (Terraform)
 
-Everything on AWS is defined in `terraform/`:
+Everything on AWS is defined in `terraform/`, split into two root modules
+with separate state:
 
-- VPC with public and private subnets, plus NAT
-- EKS cluster `herovire-eks`, 2 t3.medium nodes in private subnets
-- ECR repository with a lifecycle policy
-- IAM roles, security groups, OIDC provider
+| Module | Contains | Applied by |
+|---|---|---|
+| `bootstrap/` | VPC, subnets, NAT, Jenkins EC2 | me, from a laptop |
+| `platform/` | EKS, ECR, OIDC role | the Jenkins pipeline |
 
 State lives in a versioned S3 bucket, so the environment is reproducible.
 `terraform plan` costs nothing, so I only ran `apply` when I was actually working.
+
+<!--
+The split is the interesting bit and there is a whole slide on it later.
+-->
+
+---
+
+## The bug that made me split it
+
+My infra pipeline ran `terraform apply` over the **whole** stack, including the
+Jenkins server it was running on.
+
+I changed the Jenkins `user_data`. Terraform correctly decided the instance had
+to be replaced, and stopped the machine that was executing the build.
+
+**The pipeline destroyed its own executor.**
+
+- Not an infinite loop: apply is idempotent, so it is a no-op when the host is
+  unchanged
+- It is a self-destruct on *self-modification* - it only appears when you change
+  the CI server's own definition
+
+Fix: `platform/` reads `bootstrap/` but never applies it, so the Jenkins host is
+not in the state Jenkins touches.
+
+<!--
+Rule to say out loud: a CI server should not manage the infrastructure it runs
+on. The other answer is ephemeral runners, which is what GitHub Actions does.
+-->
 
 ---
 
