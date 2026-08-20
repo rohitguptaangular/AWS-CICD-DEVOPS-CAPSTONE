@@ -33,6 +33,17 @@ resource "aws_vpc_security_group_ingress_rule" "jenkins_webhook" {
   ip_protocol       = "tcp"
 }
 
+# The infra pipeline runs Ansible from Jenkins against the Jenkins host itself
+# over its private address, so SSH has to be allowed within the group.
+resource "aws_vpc_security_group_ingress_rule" "jenkins_ssh_self" {
+  security_group_id            = aws_security_group.jenkins.id
+  description                  = "SSH within the group, for the Ansible stage"
+  referenced_security_group_id = aws_security_group.jenkins.id
+  from_port                    = 22
+  to_port                      = 22
+  ip_protocol                  = "tcp"
+}
+
 resource "aws_vpc_security_group_egress_rule" "jenkins_all" {
   security_group_id = aws_security_group.jenkins.id
   description       = "All outbound"

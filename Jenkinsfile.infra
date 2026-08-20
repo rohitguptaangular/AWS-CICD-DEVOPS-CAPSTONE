@@ -32,8 +32,10 @@ pipeline {
                     // Read-only: the Jenkins host address comes from the bootstrap
                     // state. This pipeline reads that state but never applies it.
                     sh 'terraform -chdir=$TF_BOOTSTRAP init -input=false'
+                    // Private address: reaching the host's own public IP would exit
+                    // through the IGW and come back with a source the SG rejects.
                     def jenkinsIp = sh(
-                        script: 'terraform -chdir=$TF_BOOTSTRAP output -raw jenkins_public_ip',
+                        script: 'terraform -chdir=$TF_BOOTSTRAP output -raw jenkins_private_ip',
                         returnStdout: true
                     ).trim()
                     writeFile file: 'ansible/inventory.ini', text: "[jenkins]\n${jenkinsIp}\n"
