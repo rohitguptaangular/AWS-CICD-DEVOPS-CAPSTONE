@@ -1,0 +1,98 @@
+# Grafana picks this up through the kube-prometheus-stack dashboard sidecar,
+# which watches for ConfigMaps labelled grafana_dashboard in any namespace.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: herovire-app-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  herovire-app.json: |
+    {
+      "title": "Herovire App",
+      "uid": "herovire-app",
+      "tags": ["herovire", "capstone"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Pods up",
+          "id": 1,
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(up{job=\"herovire-app\"})",
+              "legendFormat": "up",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Requests / sec",
+          "id": 2,
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "decimals": 2 },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total[1m]))",
+              "legendFormat": "rps",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate",
+          "id": 3,
+          "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total[1m]))",
+              "legendFormat": "all requests",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate by status",
+          "id": 4,
+          "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(flask_http_request_total[1m]))",
+              "legendFormat": "{{status}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }

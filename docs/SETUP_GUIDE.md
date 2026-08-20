@@ -98,12 +98,35 @@ tests/smoke_test.sh              # / and /health return 200 via the LoadBalancer
 
 ## 7. Monitoring (optional, Sprint 5)
 
+The release name must stay `kube-prometheus-stack` - the manifests below match on it.
+
 ```bash
 helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   -n monitoring --create-namespace -f monitoring/values.yaml
+
+# Alertmanager mounts this secret, so create it or the pod stays pending.
+kubectl -n monitoring create secret generic alertmanager-smtp \
+  --from-literal=password=placeholder
+
+# The chart alone does not scrape the app or add the dashboard - these do.
+kubectl apply -f monitoring/servicemonitor.yaml     # tells Prometheus to scrape /metrics
+kubectl apply -f monitoring/alert-rules.yaml        # AppPodDown alert
+kubectl apply -f monitoring/grafana-dashboard.yaml  # request-rate dashboard
 ```
 
-Grafana is exposed as a LoadBalancer (admin/admin).
+Check the app is actually being scraped before trusting the dashboard:
+
+```bash
+kubectl get servicemonitor,prometheusrule -n monitoring | grep herovire
+```
+
+Grafana comes up as a ClusterIP, so reach it over a port-forward (admin/admin):
+
+```bash
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+```
+
+Then open http://localhost:3000 - the dashboard is "Herovire App".
 
 ## 8. Teardown (do this after every session - see COST.md)
 
