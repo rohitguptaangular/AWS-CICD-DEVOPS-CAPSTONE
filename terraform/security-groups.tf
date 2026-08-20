@@ -39,3 +39,15 @@ resource "aws_vpc_security_group_egress_rule" "jenkins_all" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
+
+# Jenkins is inside the VPC, so the cluster endpoint resolves to the private
+# ENIs and the cluster SG decides access. Without this the deploy stage's
+# kubectl calls just time out.
+resource "aws_vpc_security_group_ingress_rule" "eks_api_from_jenkins" {
+  security_group_id            = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  description                  = "Jenkins to EKS API server"
+  referenced_security_group_id = aws_security_group.jenkins.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+}
