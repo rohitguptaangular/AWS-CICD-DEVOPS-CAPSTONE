@@ -118,16 +118,19 @@ State lives in a versioned S3 bucket, so the environment is reproducible.
 
 ## Configuration (Ansible)
 
-Ansible sets up the Jenkins EC2 host: Jenkins, Docker, kubectl and the AWS CLI.
+Two layers on the Jenkins host:
 
-It is idempotent, so re-running it just converges to the same state.
+- **EC2 user data** bootstraps it at first boot: Java 21, Jenkins, Docker, Terraform
+- **Ansible** (`configure-nodes.yml`) then installs Docker, kubectl and the AWS CLI,
+  and points kubeconfig at the EKS cluster
 
-**Why both Terraform and Ansible?**
-Terraform creates the machine. Ansible installs and configures what runs on it.
+Ansible is idempotent, so re-running it converges to the same state. User data
+only ever runs once, on first boot, which is why the ongoing config lives in Ansible.
 
 <!--
 This comes up in vivas. Terraform = provisioning, Ansible = configuration.
-They do different jobs.
+Be precise: user data bootstraps Jenkins itself, Ansible manages the tooling
+around it. Do not claim Ansible installs Jenkins, the playbook is on screen.
 -->
 
 ---

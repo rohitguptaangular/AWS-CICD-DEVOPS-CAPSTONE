@@ -27,7 +27,7 @@
   <!-- GitHub -->
   <rect x="40" y="150" width="160" height="80" rx="10" fill="#24292e"/>
   <text x="120" y="182" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">GitHub</text>
-  <text x="120" y="202" text-anchor="middle" font-size="12" fill="#c9d1d9">private repo</text>
+  <text x="120" y="202" text-anchor="middle" font-size="12" fill="#c9d1d9">source of truth</text>
   <text x="120" y="218" text-anchor="middle" font-size="12" fill="#c9d1d9">app &#183; IaC &#183; k8s &#183; Jenkinsfile</text>
 
   <!-- Developer -->
