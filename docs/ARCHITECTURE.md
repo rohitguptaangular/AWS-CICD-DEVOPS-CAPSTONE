@@ -84,11 +84,11 @@ Region: ap-south-1
 | `terraform/bootstrap` | `bootstrap/terraform.tfstate` | VPC, subnets, IGW, NAT, Jenkins SG, Jenkins EC2 + EIP + IAM role | a human, from a laptop |
 | `terraform/platform` | `platform/terraform.tfstate` | EKS cluster + node group, ECR, GitHub OIDC role, EKS API ingress rule | the Jenkins infra pipeline |
 
-This started as one module, and that was a mistake I only found by running the
-infra pipeline for real. `Jenkinsfile.infra` applied the whole stack **including the
-Jenkins EC2**. When the instance's `user_data` changed, Terraform correctly decided the
-instance had to be replaced - and stopped the machine the build was executing on. The
-build died mid-apply, and the Terraform run was interrupted partway through.
+This started as a single module, and the flaw only surfaced when the infra pipeline was
+run for real. `Jenkinsfile.infra` applied the whole stack **including the Jenkins EC2**.
+When the instance's `user_data` changed, Terraform correctly decided the instance had to
+be replaced - and stopped the machine the build was executing on. The build died
+mid-apply, and the Terraform run was interrupted partway through.
 
 It is worth being precise: this was not an infinite loop. `terraform apply` is
 idempotent, so when the Jenkins host is unchanged the apply is a no-op and the pipeline

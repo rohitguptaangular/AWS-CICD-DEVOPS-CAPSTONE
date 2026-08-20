@@ -1,6 +1,6 @@
 # Modern CD alternative to the Jenkins deploy stage.
 # ArgoCD watches the k8s/ manifests in git and continuously reconciles the
-# cluster to match — pull-based GitOps instead of Jenkins pushing kubectl apply.
+# cluster to match - pull-based GitOps instead of Jenkins pushing kubectl apply.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

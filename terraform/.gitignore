@@ -1,6 +1,6 @@
-# Terraform working files — never commit these.
+# Terraform working files - never commit these.
 .terraform/
-# NOTE: .terraform.lock.hcl SHOULD be committed (pins provider versions) — not ignored.
+# NOTE: .terraform.lock.hcl SHOULD be committed (pins provider versions) - not ignored.
 *.tfstate
 *.tfstate.*
 crash.log

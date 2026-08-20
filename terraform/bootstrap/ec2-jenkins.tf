@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "jenkins_ecr" {
 }
 
 # Broad access so the infra pipeline can run terraform apply from Jenkins.
-# Demo scope — in production this would be a scoped provisioning role or OIDC.
+# Demo scope - in production this would be a scoped provisioning role or OIDC.
 resource "aws_iam_role_policy_attachment" "jenkins_admin" {
   role       = aws_iam_role.jenkins.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"

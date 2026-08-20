@@ -40,7 +40,7 @@ resource "aws_iam_role" "github_actions" {
   tags               = { Name = "${var.project_name}-github-actions-role" }
 }
 
-# Scoped to ECR push only — least privilege for the CI job.
+# Scoped to ECR push only - least privilege for the CI job.
 resource "aws_iam_role_policy_attachment" "github_ecr" {
   role       = aws_iam_role.github_actions.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"

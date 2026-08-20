@@ -70,8 +70,8 @@ capstone/
 ├── Jenkinsfile                ← App CI/CD pipeline: build → push → deploy → smoke test
 ├── Jenkinsfile.infra          ← Infra pipeline: terraform apply → ansible → verify
 ├── terraform/
-│   ├── bootstrap/             ← Network + Jenkins server — applied by hand (Sprint 2)
-│   └── platform/              ← EKS, ECR, OIDC — applied by the Jenkins pipeline
+│   ├── bootstrap/             ← Network + Jenkins server - applied by hand (Sprint 2)
+│   └── platform/              ← EKS, ECR, OIDC - applied by the Jenkins pipeline
 ├── ansible/                   ← Configuration playbooks (Sprint 3)
 ├── k8s/                       ← Kubernetes manifests (Sprint 4)
 ├── monitoring/                ← Prometheus + Grafana configs (Sprint 5)

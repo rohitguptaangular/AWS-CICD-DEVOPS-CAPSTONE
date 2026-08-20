@@ -50,10 +50,10 @@ deletion.
 (`aws_vpc_security_group_egress_rule.jenkins_all`); without it outbound traffic is dropped.
 
 ### SSH or Jenkins UI suddenly unreachable
-**Cause:** home ISP changed your public IP, so the `admin_ip_cidr` my-IP SG rule
+**Cause:** the ISP changed the workstation's public IP, so the `admin_ip_cidr` SG rule
 no longer matches.
-**Fix:** re-apply with the current IP:
-`terraform apply -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"`.
+**Fix:** re-apply the bootstrap module with the current IP:
+`terraform -chdir=terraform/bootstrap apply -var="admin_ip_cidr=$(curl -s https://checkip.amazonaws.com)/32"`.
 
 ## EKS / Kubernetes
 
@@ -79,7 +79,7 @@ placeholder works (alert fires, no email sent):
 kubectl create secret generic alertmanager-smtp -n monitoring --from-literal=password=placeholder
 ```
 
-### `AppPodDown` alert doesn't fire when I delete the pod
+### `AppPodDown` alert doesn't fire when the pod is deleted
 **Cause:** the rule is `up{job="herovire-app"}==0`. Deleting all pods removes the
 target entirely, so there's no `up==0` series to fire on.
 **Fix (to demo):** make Ready pods unreachable on the scrape port instead (patch

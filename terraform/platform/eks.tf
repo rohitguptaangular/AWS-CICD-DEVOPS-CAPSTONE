@@ -38,7 +38,7 @@ resource "aws_eks_cluster" "main" {
 }
 
 # Let the Jenkins EC2 role run kubectl against the cluster (IAM permission alone
-# is not enough — EKS needs an access entry mapping the role to a k8s policy).
+# is not enough - EKS needs an access entry mapping the role to a k8s policy).
 resource "aws_eks_access_entry" "jenkins" {
   cluster_name  = aws_eks_cluster.main.name
   principal_arn = local.jenkins_role_arn

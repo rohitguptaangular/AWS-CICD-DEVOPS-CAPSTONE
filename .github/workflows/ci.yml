@@ -1,5 +1,5 @@
 # Modern CI alternative to the Jenkins build pipeline.
-# Builds the app image and pushes it to ECR — authenticating with short-lived
+# Builds the app image and pushes it to ECR - authenticating with short-lived
 # credentials via GitHub OIDC (no long-lived AWS keys stored in GitHub).
 name: CI - build and push to ECR
 

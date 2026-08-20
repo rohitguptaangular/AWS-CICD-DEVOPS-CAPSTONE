@@ -17,7 +17,7 @@ SLEEP="${SLEEP:-10}"
 # Resolve the base URL: explicit arg/env wins, otherwise ask kubectl for the ELB hostname.
 BASE_URL="${1:-${APP_URL:-}}"
 if [[ -z "$BASE_URL" ]]; then
-  echo "No URL given — discovering LoadBalancer hostname for service/$SERVICE ..."
+  echo "No URL given - discovering LoadBalancer hostname for service/$SERVICE ..."
   host=""
   for i in $(seq 1 "$RETRIES"); do
     host=$(kubectl get svc "$SERVICE" -n "$NAMESPACE" \
