@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: herovire-app
-          image: 376129434099.dkr.ecr.ap-south-1.amazonaws.com/herovire-app:3ca6751
+          image: 376129434099.dkr.ecr.ap-south-1.amazonaws.com/herovire-app:latest
           ports:
             - containerPort: 5000
           resources:
