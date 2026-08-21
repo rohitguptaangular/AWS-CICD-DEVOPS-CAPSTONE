@@ -236,10 +236,36 @@ Readiness controls traffic, liveness controls restarts. Know the difference.
 - Grafana dashboard shows request rate: `rate(flask_http_request_total[1m])`
 - Alert `AppPodDown` fires when the scrape target stops responding
 
+**Jenkins is monitored too**, not just the app. If the CI server is down,
+nothing can build or deploy, so it belongs on the same dashboards.
+
 <!--
-Honest caveat if asked: the alert fires when a live target fails a scrape, not
+Honest caveat if asked: AppPodDown fires when a live target fails a scrape, not
 when pods scale to zero (the target just disappears). An absent() rule would
-handle that better.
+handle that better. JenkinsDown does not have that weakness, because Jenkins is
+a static target rather than a discovered one.
+-->
+
+---
+
+## Monitoring the CI server
+
+Jenkins runs on EC2, outside the cluster, so there is no Service for a
+ServiceMonitor to select. It is scraped as a static target instead.
+
+- Prometheus metrics plugin exposes `/prometheus/` on the Jenkins host
+- Prometheus authenticates with an API token mounted from a Kubernetes
+  secret, so no token is committed
+- Grafana dashboard "Jenkins CI": build queue, executor usage, node health
+- Alerts `JenkinsDown` and `JenkinsBuildQueueStuck`
+
+The security group had to allow 8080 from inside the VPC, because the nodes
+scrape from the private subnets.
+
+<!--
+Two details worth saying: the trailing slash on /prometheus/ matters, without
+it Jenkins answers 302 and the target reads as down. And JenkinsDown is more
+reliable than AppPodDown because a static target does not disappear.
 -->
 
 ---
@@ -276,14 +302,16 @@ Both Jenkins pipelines went green as real jobs, not from my laptop:
 
 | Pipeline | Result |
 |---|---|
-| `herovire-app` | 6 stages, 57 seconds, image pushed and smoke test passed |
-| `herovire-infra` | Terraform applied, Ansible `ok=8 changed=3`, 2 nodes Ready |
+| `herovire-app` | 6 stages green, image pushed, smoke test passed |
+| `herovire-infra` | 18 resources added, Ansible `ok=8 changed=3`, 2 nodes Ready |
 
-- The infra job created the EKS cluster and node group from scratch
-- A later run was a clean no-op: `0 added, 0 changed, 0 destroyed`
-- Teardown removed 44 resources and returned the account to zero
+- I applied `bootstrap` by hand; **Jenkins applied `platform`**, creating the
+  cluster, node group and ECR from an empty state
+- Prometheus then showed both targets up, `jenkins` and `herovire-app`
+- Teardown removed all 48 resources and returned the account to zero
 
-Screenshots of every green build are in `docs/screenshots/`.
+Screenshots of the green builds, the Prometheus targets and the Grafana
+dashboards are in `docs/screenshots/`.
 
 ---
 
