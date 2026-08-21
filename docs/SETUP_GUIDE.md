@@ -127,24 +127,58 @@ tests/smoke_test.sh              # / and /health return 200 via the LoadBalancer
 
 The release name must stay `kube-prometheus-stack` - the manifests below match on it.
 
-```bash
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  -n monitoring --create-namespace -f monitoring/values.yaml
+Both secrets have to exist **before** the Helm install, because the Prometheus and
+Alertmanager pods mount them and stay pending if they are missing.
 
-# Alertmanager mounts this secret, so create it or the pod stays pending.
+```bash
+kubectl create namespace monitoring
+
+# Alertmanager mounts this one. Placeholder here; a real setup uses an app password.
 kubectl -n monitoring create secret generic alertmanager-smtp \
   --from-literal=password=placeholder
 
-# The chart alone does not scrape the app or add the dashboard - these do.
+# Prometheus mounts this one to authenticate its Jenkins scrape. Generate the
+# token in Jenkins under Manage Jenkins > Users > admin > Configure > API token.
+kubectl -n monitoring create secret generic jenkins-token \
+  --from-literal=token=<jenkins api token>
+
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  -n monitoring -f monitoring/values.yaml
+
+# The chart alone does not scrape anything of ours or add the dashboards.
 kubectl apply -f monitoring/servicemonitor.yaml     # tells Prometheus to scrape /metrics
-kubectl apply -f monitoring/alert-rules.yaml        # AppPodDown alert
-kubectl apply -f monitoring/grafana-dashboard.yaml  # request-rate dashboard
+kubectl apply -f monitoring/alert-rules.yaml        # app and Jenkins alerts
+kubectl apply -f monitoring/grafana-dashboard.yaml  # app request-rate dashboard
+kubectl apply -f monitoring/jenkins-dashboard.yaml  # Jenkins build health dashboard
 ```
 
-Check the app is actually being scraped before trusting the dashboard:
+### Monitoring Jenkins itself
+
+Prometheus watches the app and the cluster, and it also watches the Jenkins host,
+so a CI outage shows up the same way an app outage does. Three things make that work:
+
+1. **The Prometheus metrics plugin on Jenkins.** Install it from Manage Plugins, then
+   under Manage Jenkins > System, tick **Use authenticated endpoint**. Without that
+   the endpoint is anonymous, and Jenkins' own security then refuses the request.
+2. **A scrape config.** Jenkins runs on EC2, outside the cluster, so there is no
+   Service for a ServiceMonitor to select. It is a static target in
+   `monitoring/values.yaml` instead, pointed at the Jenkins private IP. That IP
+   changes when bootstrap is rebuilt, so update it after a rebuild:
+   `terraform -chdir=terraform/bootstrap output -raw jenkins_private_ip`
+3. **A security group rule.** The nodes scrape from the private subnets, which the
+   admin-IP rules do not cover, so `bootstrap` opens 8080 within the VPC.
+
+The metrics path is `/prometheus/` **with the trailing slash**. Without it Jenkins
+answers 302 and the target shows as down.
+
+### Verify before trusting the dashboards
 
 ```bash
 kubectl get servicemonitor,prometheusrule -n monitoring | grep herovire
+
+# Both targets should report health "up".
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
+# then open http://localhost:9090/targets and look for jobs "jenkins" and "herovire-app"
 ```
 
 Grafana comes up as a ClusterIP, so reach it over a port-forward (admin/admin):
@@ -153,7 +187,7 @@ Grafana comes up as a ClusterIP, so reach it over a port-forward (admin/admin):
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
 ```
 
-Then open http://localhost:3000 - the dashboard is "Herovire App".
+Then open http://localhost:3000 - the dashboards are "Herovire App" and "Jenkins CI".
 
 ## 8. Teardown (do this after every session - see COST.md)
 

@@ -26,3 +26,25 @@ spec:
           annotations:
             summary: "High 5xx error rate on herovire-app"
             description: "5xx responses are exceeding 1 per second over the last 5 minutes."
+
+    - name: herovire-jenkins
+      rules:
+        # Jenkins is the CI/CD server itself. If it is down, nothing can build
+        # or deploy, so this is infrastructure health rather than app health.
+        - alert: JenkinsDown
+          expr: up{job="jenkins"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Jenkins is not responding to scrapes"
+            description: "The Jenkins metrics endpoint has been unreachable for over 5 minutes, so no builds or deployments can run."
+
+        - alert: JenkinsBuildQueueStuck
+          expr: jenkins_queue_size_value > 3
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Jenkins build queue is backing up"
+            description: "More than 3 jobs have been waiting for an executor for over 10 minutes."

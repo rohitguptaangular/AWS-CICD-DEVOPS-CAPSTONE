@@ -12,6 +12,29 @@ prometheus:
         memory: 400Mi
       limits:
         memory: 800Mi
+    # The Jenkins API token is mounted from a Secret created out-of-band, the
+    # same way the Alertmanager SMTP password is, so no token lands in git:
+    #   kubectl create secret generic jenkins-token -n monitoring \
+    #     --from-literal=token=<api token from Jenkins>
+    secrets:
+      - jenkins-token
+    # Jenkins runs on EC2, outside the cluster, so there is no Service for a
+    # ServiceMonitor to select. It is scraped as a plain static target instead.
+    # The address is the Jenkins private IP, which changes whenever the
+    # bootstrap module is destroyed and re-applied - update it after a rebuild
+    # with: terraform -chdir=terraform/bootstrap output -raw jenkins_private_ip
+    additionalScrapeConfigs:
+      - job_name: jenkins
+        # Trailing slash matters, /prometheus redirects with a 302.
+        metrics_path: /prometheus/
+        basic_auth:
+          username: admin
+          password_file: /etc/prometheus/secrets/jenkins-token/token
+        static_configs:
+          - targets:
+              - 10.0.1.212:8080
+            labels:
+              instance: herovire-jenkins
 
 grafana:
   # Demo credential - override with --set grafana.adminPassword or a secret.

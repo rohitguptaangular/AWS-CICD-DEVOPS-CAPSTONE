@@ -1,0 +1,129 @@
+# Jenkins CI health, from the Prometheus metrics plugin on the Jenkins EC2 host.
+# Picked up by the kube-prometheus-stack dashboard sidecar, same as the app one.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: herovire-jenkins-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  herovire-jenkins.json: |
+    {
+      "title": "Jenkins CI",
+      "uid": "herovire-jenkins",
+      "tags": ["herovire", "capstone", "jenkins"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "10s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Jenkins up",
+          "id": 1,
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "up{job=\"jenkins\"}", "legendFormat": "up", "refId": "A" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Build queue",
+          "id": 2,
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+          "description": "Jobs waiting for an executor. Sustained above zero means Jenkins is a bottleneck.",
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "jenkins_queue_size_value", "legendFormat": "queued", "refId": "A" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Executors in use",
+          "id": 3,
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+          "fieldConfig": { "defaults": {}, "overrides": [] },
+          "targets": [
+            { "expr": "jenkins_executor_in_use_value", "legendFormat": "busy", "refId": "A" },
+            { "expr": "jenkins_executor_count_value", "legendFormat": "total", "refId": "B" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Online nodes",
+          "id": 4,
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "jenkins_node_online_value", "legendFormat": "online", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Build queue over time",
+          "id": 5,
+          "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+          "fieldConfig": {
+            "defaults": { "custom": { "fillOpacity": 10 } },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "jenkins_queue_size_value", "legendFormat": "queue size", "refId": "A" },
+            { "expr": "jenkins_queue_buildable_value", "legendFormat": "buildable", "refId": "B" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Executor usage",
+          "id": 6,
+          "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+          "fieldConfig": {
+            "defaults": { "custom": { "fillOpacity": 10 } },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "jenkins_executor_in_use_value", "legendFormat": "in use", "refId": "A" },
+            { "expr": "jenkins_executor_free_value", "legendFormat": "free", "refId": "B" }
+          ]
+        }
+      ]
+    }
