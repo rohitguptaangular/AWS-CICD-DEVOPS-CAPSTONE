@@ -19,7 +19,8 @@ aws sts get-caller-identity
 Terraform needs two things to exist *before* it can run, because they can't
 manage themselves:
 
-**a. Remote state bucket** (name must match `terraform/backend.tf`):
+**a. Remote state bucket** (name must match `terraform/bootstrap/backend.tf` and
+`terraform/platform/backend.tf`):
 
 ```bash
 aws s3api create-bucket --bucket herovire-capstone-tfstate-<ACCOUNT_ID> \
@@ -109,8 +110,8 @@ kubectl get nodes            # both nodes should be Ready
   parameters. Running this executes `terraform apply` against
   **`terraform/platform` only**, then Ansible, then a node check, all **from
   Jenkins** (Sprint 2 tasks 2.9/2.10). It reads `terraform/bootstrap`'s state to
-  find the Jenkins host for the Ansible stage, but never applies it - so the
-  build cannot replace its own executor.
+  find the Jenkins host for the Ansible stage, but never applies it, so Jenkins
+  never modifies the host it runs on.
 
 ## 6. Deploy the app + verify
 

@@ -84,25 +84,18 @@ Region: ap-south-1
 | `terraform/bootstrap` | `bootstrap/terraform.tfstate` | VPC, subnets, IGW, NAT, Jenkins SG, Jenkins EC2 + EIP + IAM role | a human, from a laptop |
 | `terraform/platform` | `platform/terraform.tfstate` | EKS cluster + node group, ECR, GitHub OIDC role, EKS API ingress rule | the Jenkins infra pipeline |
 
-This started as a single module, and the flaw only surfaced when the infra pipeline was
-run for real. `Jenkinsfile.infra` applied the whole stack **including the Jenkins EC2**.
-When the instance's `user_data` changed, Terraform correctly decided the instance had to
-be replaced - and stopped the machine the build was executing on. The build died
-mid-apply, and the Terraform run was interrupted partway through.
+The two modules change at different rates and are applied by different people.
+`bootstrap` is the foundation, the network and the Jenkins host itself. It changes rarely
+and a human applies it from a laptop. `platform` holds the parts the delivery pipeline
+owns, so Jenkins applies that one itself.
 
-It is worth being precise: this was not an infinite loop. `terraform apply` is
-idempotent, so when the Jenkins host is unchanged the apply is a no-op and the pipeline
-passes. The failure mode is narrower and nastier - a *self-destruct on
-self-modification*, which only appears the moment you change the CI server's own
-definition.
-
-The fix is to make the dependency one-way. `platform` reads `bootstrap` through a
-`terraform_remote_state` data source (it needs the subnet ids, the Jenkins SG id and the
-Jenkins role ARN), but the Jenkins host is not in the `platform` state, so an apply from
-Jenkins cannot touch it. The general rule: **a CI server should not manage the
-infrastructure it runs on.** The alternative solution is an ephemeral runner - which is
-what the GitHub Actions path already does, since a runner that is created and destroyed
-per job has no permanent identity to protect.
+Splitting them keeps the dependency one-way. `platform` reads `bootstrap` through a
+`terraform_remote_state` data source, since it needs the subnet ids, the Jenkins security
+group id and the Jenkins role ARN. The Jenkins host is not in the `platform` state, so an
+apply run from Jenkins cannot modify or replace the machine the build is running on. The
+general rule is that **a CI server should not manage the infrastructure it runs on.** The
+alternative is an ephemeral runner, which is what the GitHub Actions path already does,
+since a runner created and destroyed per job has no permanent host to protect.
 
 ### Why public vs private subnets
 
@@ -185,7 +178,7 @@ The Jenkins role holds `AdministratorAccess` because the infra pipeline runs
 Scoping it precisely would mean enumerating every permission Terraform needs across all
 of those services. In production this would be a scoped provisioning role, or Jenkins
 would assume a role via OIDC the way the GitHub Actions path already does. It is called
-out in `terraform/ec2-jenkins.tf` rather than left implicit.
+out in `terraform/bootstrap/ec2-jenkins.tf` rather than left implicit.
 
 **Security groups**
 
@@ -221,7 +214,7 @@ git push -> GitHub Actions -> OIDC to AWS -> build + push to ECR
 
 The difference is direction. Jenkins **pushes** changes into the cluster; ArgoCD
 **pulls** the desired state from git and corrects drift. The Terraform for the OIDC
-provider and role is in `terraform/github-oidc.tf`.
+provider and role is in `terraform/platform/github-oidc.tf`.
 
 ---
 

@@ -31,7 +31,7 @@ cluster to match. Git is the single source of truth:
 
 The Jenkins EC2 uses an **instance-profile IAM role** for keyless AWS auth, which
 is good. GitHub Actions goes further with **OIDC federation**
-(`terraform/github-oidc.tf`): each workflow run exchanges a short-lived GitHub
+(`terraform/platform/github-oidc.tf`): each workflow run exchanges a short-lived GitHub
 token for temporary AWS credentials scoped to this repo. There is **no long-lived
 AWS key stored in GitHub at all** - the role trusts `repo:<owner>/<name>:*`.
 

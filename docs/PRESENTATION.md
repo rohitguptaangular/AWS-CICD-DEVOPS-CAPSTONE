@@ -189,32 +189,8 @@ State lives in a versioned S3 bucket, so the environment is reproducible.
 `terraform plan` costs nothing, so I only ran `apply` when I was actually working.
 
 <!--
-The split is the interesting bit and there is a whole slide on it next.
--->
-
----
-
-## The bug that made me split it
-
-My infra pipeline ran `terraform apply` over the **whole** stack, including the
-Jenkins server it was running on.
-
-I changed the Jenkins `user_data`. Terraform correctly decided the instance had
-to be replaced, and stopped the machine that was executing the build.
-
-**The pipeline destroyed its own executor.**
-
-- Not an infinite loop: apply is idempotent, so it is a no-op when the host is
-  unchanged
-- It is a self-destruct on *self-modification*, and it only appears when you
-  change the CI server's own definition
-
-Fix: `platform/` reads `bootstrap/` but never applies it, so the Jenkins host is
-not in the state Jenkins touches.
-
-<!--
-Rule to say out loud: a CI server should not manage the infrastructure it runs
-on. The other answer is ephemeral runners, which is what GitHub Actions does.
+If asked why it is split: the two modules change at different rates, and
+Jenkins applies platform without ever touching the host it runs on.
 -->
 
 ---
@@ -280,7 +256,8 @@ handle that better.
 
 - Jenkins authenticates to AWS with an instance role, not access keys
 - Worker nodes are private, with no public IPs
-- Security group opens 22 and 8080 to my IP only, plus GitHub's webhook ranges
+- Ingress is restricted: 22 and 8080 from my IP, 8080 from GitHub's webhook
+  ranges, and 22 within the group itself for the Ansible stage
 
 The Jenkins role is admin because it runs `terraform apply` across VPC, IAM, EKS
 and EC2. In production this would be a scoped provisioning role. I have called it
