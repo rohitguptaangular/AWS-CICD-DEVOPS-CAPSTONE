@@ -1,19 +1,69 @@
 ---
 marp: true
 paginate: true
+theme: default
 title: End-to-End DevOps CI/CD Pipeline on AWS
+footer: 'Rohit Gupta  |  Herovire Capstone, Batch 15'
+style: |
+  section {
+    font-size: 25px;
+    padding: 55px 65px;
+  }
+  h1, h2 {
+    color: #232f3e;
+    border-bottom: 3px solid #ff9900;
+    padding-bottom: 8px;
+  }
+  table {
+    font-size: 21px;
+  }
+  th {
+    background: #f2f3f3;
+  }
+  footer {
+    color: #999;
+    font-size: 15px;
+  }
+  section.lead h1 {
+    border-bottom: none;
+  }
+  section.lead {
+    text-align: center;
+  }
 ---
 
-<!--
-To present: open in VS Code with the Marp extension, or run
-  marp docs/PRESENTATION.md --pdf
-Slides are separated by ---
--->
+<!-- _class: lead -->
+<!-- _paginate: false -->
+<!-- _footer: '' -->
 
 # End-to-End DevOps CI/CD Pipeline on AWS
 
+**Rohit Gupta**
+
 Herovire Capstone, Batch 15
-Rohit Gupta
+
+`github.com/rohitguptaangular/AWS-CICD-DEVOPS-CAPSTONE`
+
+---
+
+## Agenda
+
+1. The problem and what I built
+2. Architecture
+3. Build and deploy pipeline (Jenkins)
+4. Infrastructure as code (Terraform)
+5. The design bug I found and fixed
+6. Configuration management (Ansible)
+7. Kubernetes and monitoring
+8. Security
+9. Evidence it runs
+10. Cost control
+11. GitOps path, and what I would do next
+
+<!--
+Keep this quick, about 20 seconds. It tells the panel there is a structure
+and that the demo is coming.
+-->
 
 ---
 
@@ -62,11 +112,34 @@ Region is ap-south-1.
 ---
 
 <!-- _paginate: false -->
+<!-- _footer: '' -->
 ![bg fit](architecture-diagram.svg)
 
 <!--
 Full diagram. Walk it top to bottom.
 -->
+
+---
+
+## Network layout
+
+```
+VPC 10.0.0.0/16  (ap-south-1, two AZs)
+│
+├── Public  10.0.1.0/24, 10.0.2.0/24
+│   ├── Jenkins EC2 (t3.medium, static EIP)
+│   └── Load balancer for the app
+│
+├── Private 10.0.11.0/24, 10.0.12.0/24
+│   └── EKS worker nodes, no public IPs
+│
+├── Internet Gateway   (public subnets)
+└── NAT Gateway (one)  (private subnets reach out)
+```
+
+Nodes are private, so the only way in is through the load balancer.
+One NAT gateway instead of one per AZ: a single point of failure,
+but it halves the NAT cost and is the right trade here.
 
 ---
 
@@ -116,7 +189,7 @@ State lives in a versioned S3 bucket, so the environment is reproducible.
 `terraform plan` costs nothing, so I only ran `apply` when I was actually working.
 
 <!--
-The split is the interesting bit and there is a whole slide on it later.
+The split is the interesting bit and there is a whole slide on it next.
 -->
 
 ---
@@ -133,8 +206,8 @@ to be replaced, and stopped the machine that was executing the build.
 
 - Not an infinite loop: apply is idempotent, so it is a no-op when the host is
   unchanged
-- It is a self-destruct on *self-modification* - it only appears when you change
-  the CI server's own definition
+- It is a self-destruct on *self-modification*, and it only appears when you
+  change the CI server's own definition
 
 Fix: `platform/` reads `bootstrap/` but never applies it, so the Jenkins host is
 not in the state Jenkins touches.
@@ -169,11 +242,12 @@ around it. Do not claim Ansible installs Jenkins, the playbook is on screen.
 
 - Deployment with 2 replicas
 - Service of type LoadBalancer, so the app is reachable publicly
-- HPA to scale on CPU (needs metrics-server installed)
+- HPA to scale on CPU, 2 to 10 pods (needs metrics-server installed)
 - Liveness and readiness probes on `/health`
 
 <!--
 Show `kubectl get pods` at 2/2 Running and the LB URL returning 200.
+Readiness controls traffic, liveness controls restarts. Know the difference.
 -->
 
 ---
@@ -191,6 +265,48 @@ Honest caveat if asked: the alert fires when a live target fails a scrape, not
 when pods scale to zero (the target just disappears). An absent() rule would
 handle that better.
 -->
+
+---
+
+## Security
+
+**No static AWS credentials anywhere in the pipeline.**
+
+| Identity | Permissions |
+|---|---|
+| Jenkins EC2 role | `AdministratorAccess`, broad on purpose |
+| EKS node role | Worker, CNI, and ECR read only |
+| GitHub Actions | ECR power user, assumed via OIDC |
+
+- Jenkins authenticates to AWS with an instance role, not access keys
+- Worker nodes are private, with no public IPs
+- Security group opens 22 and 8080 to my IP only, plus GitHub's webhook ranges
+
+The Jenkins role is admin because it runs `terraform apply` across VPC, IAM, EKS
+and EC2. In production this would be a scoped provisioning role. I have called it
+out in the code rather than hidden it.
+
+<!--
+If they push on this, that is a good sign. The answer is: I know it is broad,
+here is why, and here is what I would do instead.
+-->
+
+---
+
+## Evidence it runs
+
+Both Jenkins pipelines went green as real jobs, not from my laptop:
+
+| Pipeline | Result |
+|---|---|
+| `herovire-app` | 6 stages, 57 seconds, image pushed and smoke test passed |
+| `herovire-infra` | Terraform applied, Ansible `ok=8 changed=3`, 2 nodes Ready |
+
+- The infra job created the EKS cluster and node group from scratch
+- A later run was a clean no-op: `0 added, 0 changed, 0 destroyed`
+- Teardown removed 44 resources and returned the account to zero
+
+Screenshots of every green build are in `docs/screenshots/`.
 
 ---
 
@@ -242,11 +358,13 @@ drift from git. Two different layers.
 
 - My Mac builds arm64 images but the nodes are amd64, so pods failed to pull.
   Fixed by building with `--platform linux/amd64`
-- Leftover LoadBalancers blocked the VPC from deleting. I now delete the
+- Jenkins was installed but dead on every fresh deploy, because a failing
+  `pip install` in user data stopped the script before Jenkins started
+- Jenkins could not reach the cluster: it sits inside the VPC, so the EKS
+  endpoint resolved to private IPs the security group did not allow
+- Leftover LoadBalancers blocked the VPC from deleting, so I now delete the
   Services before running destroy
 - Prometheus was scraping nothing because the Service was missing an `app` label
-- The ArgoCD CRD was too big for a normal apply, needed `--server-side`
-- ArgoCD kept recreating things during teardown until I deleted the App first
 
 <!--
 Good story: ArgoCD deployed exactly what git said, which is how I found out my
@@ -265,6 +383,27 @@ mistake I had missed.
   cost about $0.25
 - ECR lifecycle policy clears out untagged images
 
+<!--
+Billing data backs this up: the last full day of running the stack came to
+about 22 cents of usage.
+-->
+
+---
+
+## What I would do next
+
+- Scope the Jenkins IAM role down from `AdministratorAccess`
+- Move the infra pipeline onto ephemeral runners so nothing long lived
+  needs admin rights
+- Add a Cluster Autoscaler, since today pods would sit `Pending` past 3 nodes
+- Put the app behind an ALB with TLS instead of a Classic Load Balancer
+- Rewrite `AppPodDown` as an `absent()` rule so it catches a true zero-pod state
+
+<!--
+This slide is deliberate. Knowing what is unfinished reads better than
+claiming everything is production ready.
+-->
+
 ---
 
 ## What I learned
@@ -278,11 +417,13 @@ mistake I had missed.
 
 ---
 
+<!-- _class: lead -->
+
 ## Summary
 
 GitHub to Jenkins to Docker to ECR to Terraform to Ansible to EKS,
 with Prometheus and Grafana on top, plus a working GitOps path.
 
-One `git push` gets me a running, monitored app on Kubernetes.
+**One `git push` gets me a running, monitored app on Kubernetes.**
 
-## Thank you. Questions?
+### Thank you. Questions?
