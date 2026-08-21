@@ -30,8 +30,13 @@ resource "aws_eks_cluster" "main" {
   }
 
   access_config {
-    authentication_mode                         = "API_AND_CONFIG_MAP"
-    bootstrap_cluster_creator_admin_permissions = true
+    authentication_mode = "API_AND_CONFIG_MAP"
+    # Must stay false. When true, EKS creates its own cluster-admin access entry
+    # for whichever principal ran the apply, which then collides with the
+    # aws_eks_access_entry.jenkins declared below and fails the apply with
+    # ResourceInUseException. Access is granted explicitly instead, further down,
+    # for both the Jenkins role and the workstation admin.
+    bootstrap_cluster_creator_admin_permissions = false
   }
 
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
