@@ -109,7 +109,7 @@ kubectl get nodes            # both nodes should be Ready
 - **Infra pipeline** - Pipeline job, script path `Jenkinsfile.infra`, no
   parameters. Running this executes `terraform apply` against
   **`terraform/platform` only**, then Ansible, then a node check, all **from
-  Jenkins** (Sprint 2 tasks 2.9/2.10). It reads `terraform/bootstrap`'s state to
+  Jenkins**. It reads `terraform/bootstrap`'s state to
   find the Jenkins host for the Ansible stage, but never applies it, so Jenkins
   never modifies the host it runs on.
 
