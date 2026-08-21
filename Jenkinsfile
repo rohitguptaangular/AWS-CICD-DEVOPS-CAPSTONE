@@ -74,9 +74,17 @@ pipeline {
             sh 'docker image prune -f || true'
         }
         failure {
-            mail to: 'eiron.rohit@gmail.com',
-                 subject: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Pipeline failed. Details: ${env.BUILD_URL}"
+            // No SMTP server is configured on this Jenkins, so mail throws.
+            // Catch it, otherwise the mail stack trace buries the real failure.
+            script {
+                try {
+                    mail to: 'eiron.rohit@gmail.com',
+                         subject: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                         body: "Pipeline failed. Details: ${env.BUILD_URL}"
+                } catch (err) {
+                    echo "Build failed. Could not send the email notification: ${err.message}"
+                }
+            }
         }
     }
 }

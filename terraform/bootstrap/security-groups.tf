@@ -44,6 +44,18 @@ resource "aws_vpc_security_group_ingress_rule" "jenkins_ssh_self" {
   ip_protocol                  = "tcp"
 }
 
+# Prometheus runs on the EKS nodes in the private subnets and scrapes Jenkins
+# at :8080/prometheus. The nodes have no public IPs, so they reach Jenkins on
+# its private address and the admin-IP rules above do not cover them.
+resource "aws_vpc_security_group_ingress_rule" "jenkins_metrics_from_vpc" {
+  security_group_id = aws_security_group.jenkins.id
+  description       = "Prometheus scrape of Jenkins metrics, from inside the VPC"
+  cidr_ipv4         = local.vpc_cidr
+  from_port         = 8080
+  to_port           = 8080
+  ip_protocol       = "tcp"
+}
+
 resource "aws_vpc_security_group_egress_rule" "jenkins_all" {
   security_group_id = aws_security_group.jenkins.id
   description       = "All outbound"
